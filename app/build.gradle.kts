@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -57,29 +58,28 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
-    //ADD
-    implementation(platform("com.google.firebase:firebase-bom:34.2.0"))
-    implementation("com.google.firebase:firebase-firestore-ktx:25.1.4")
+    // Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    
+    // Firebase Authentication
+    implementation("com.google.firebase:firebase-auth-ktx")
+    
+    // Firebase Firestore
+    implementation("com.google.firebase:firebase-firestore-ktx")
 
+    // Image loading
     implementation("io.coil-kt:coil-compose:2.7.0")
 
-    // Add the dependency for the Firebase Authentication library
-    // When using the BoM, you don't specify versions in Firebase library dependencies
-    implementation("com.google.firebase:firebase-auth")
-
-    // for ViewModel
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
+    // ViewModel and Lifecycle
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
 
     // Kotlin Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 
-    // Import the Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
+    // Navigation Compose
+    implementation("androidx.navigation:navigation-compose:2.8.1")
 
-    // Add the dependency for the Firebase Authentication library
-    // When using the BoM, you don't specify versions in Firebase library dependencies
-    implementation("com.google.firebase:firebase-auth")
-
-    implementation("com.google.firebase:firebase-firestore-ktx:25.1.4")
+    // Google Sign-In
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
 }
