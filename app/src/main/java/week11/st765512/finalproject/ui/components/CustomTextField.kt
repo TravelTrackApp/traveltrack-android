@@ -25,7 +25,9 @@ fun CustomTextField(
     isError: Boolean = false,
     errorMessage: String? = null,
     keyboardType: KeyboardType = KeyboardType.Text,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    singleLine: Boolean = true,
+    maxLines: Int = 1
 ) {
     OutlinedTextField(
         value = value,
@@ -46,7 +48,8 @@ fun CustomTextField(
         visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         enabled = enabled,
-        singleLine = true,
+        singleLine = singleLine,
+        maxLines = maxLines,
         colors = TextFieldDefaults.colors()
     )
 }

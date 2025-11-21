@@ -1,19 +1,30 @@
 package week11.st765512.finalproject.ui.screens.auth
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.*
 import kotlinx.coroutines.flow.collect
 import week11.st765512.finalproject.ui.components.CustomButton
 import week11.st765512.finalproject.ui.components.CustomTextField
-import week11.st765512.finalproject.ui.components.ErrorText
+import week11.st765512.finalproject.ui.components.AuthScreenContainer
 import week11.st765512.finalproject.ui.viewmodel.AuthViewModel
 import week11.st765512.finalproject.util.Validation
 
@@ -31,12 +42,12 @@ fun LoginScreen(
         viewModel.uiState.collect { uiState = it }
     }
 
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var emailError by remember { mutableStateOf<String?>(null) }
-    var passwordError by remember { mutableStateOf<String?>(null) }
-    var emailTouched by remember { mutableStateOf(false) }
-    var passwordTouched by remember { mutableStateOf(false) }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var emailError by rememberSaveable { mutableStateOf<String?>(null) }
+    var passwordError by rememberSaveable { mutableStateOf<String?>(null) }
+    var emailTouched by rememberSaveable { mutableStateOf(false) }
+    var passwordTouched by rememberSaveable { mutableStateOf(false) }
 
     // Navigate on successful login
     LaunchedEffect(uiState.isSignedIn) {
@@ -58,26 +69,13 @@ fun LoginScreen(
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    AuthScreenContainer(
+        title = "Sign In",
+        subtitle = "Enter your credentials to view your trips",
+        modifier = modifier,
+        isLoading = uiState.isLoading,
+        errorMessage = uiState.errorMessage
     ) {
-        Text(
-            text = "Welcome Back",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        Text(
-            text = "Sign in to continue",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
 
         CustomTextField(
             value = email,
@@ -113,8 +111,6 @@ fun LoginScreen(
         ) {
             Text("Forgot Password?")
         }
-
-        ErrorText(message = uiState.errorMessage)
 
         CustomButton(
             text = "Sign In",

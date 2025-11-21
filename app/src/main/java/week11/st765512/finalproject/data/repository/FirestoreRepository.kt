@@ -24,7 +24,7 @@ class FirestoreRepository(
     /**
      * Create a document in a collection
      */
-    suspend fun <T> createDocument(
+    suspend fun <T : Any> createDocument(
         collection: String,
         documentId: String? = null,
         data: T
@@ -166,7 +166,7 @@ class FirestoreRepository(
     /**
      * Create a document for current user
      */
-    suspend fun <T> createUserDocument(
+    suspend fun <T : Any> createUserDocument(
         collection: String,
         documentId: String? = null,
         data: T,

@@ -4,7 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -13,6 +14,7 @@ import week11.st765512.finalproject.navigation.NavGraph
 import week11.st765512.finalproject.navigation.Screen
 import week11.st765512.finalproject.ui.theme.TravelTrackAppTheme
 import week11.st765512.finalproject.ui.viewmodel.AuthViewModel
+import week11.st765512.finalproject.ui.viewmodel.TripViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,9 +27,8 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val authRepository = AuthRepository()
-                    val authViewModel: AuthViewModel = viewModel {
-                        AuthViewModel(authRepository)
-                    }
+                    val authViewModel: AuthViewModel = viewModel { AuthViewModel(authRepository) }
+                    val tripViewModel: TripViewModel = viewModel { TripViewModel() }
 
                     // Determine start destination based on auth state
                     val startDestination = if (authRepository.isUserSignedIn) {
@@ -38,7 +39,8 @@ class MainActivity : ComponentActivity() {
 
                     NavGraph(
                         startDestination = startDestination,
-                        authViewModel = authViewModel
+                        authViewModel = authViewModel,
+                        tripViewModel = tripViewModel
                     )
                 }
             }
