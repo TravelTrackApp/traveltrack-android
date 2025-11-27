@@ -29,9 +29,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.google.android.gms.maps.model.LatLng
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlin.math.roundToInt
@@ -39,9 +41,12 @@ import week11.st765512.finalproject.data.model.TripInput
 import week11.st765512.finalproject.ui.components.CustomButton
 import week11.st765512.finalproject.ui.components.CustomTextField
 import week11.st765512.finalproject.ui.components.ErrorText
+import week11.st765512.finalproject.ui.components.GoogleMapView
+import week11.st765512.finalproject.ui.components.MapPlaceholder
 import week11.st765512.finalproject.ui.components.ScreenStateWrapper
 import week11.st765512.finalproject.ui.components.SuccessPill
 import week11.st765512.finalproject.ui.viewmodel.TripViewModel
+import week11.st765512.finalproject.util.GeocodingHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +67,36 @@ fun LogTripScreen(
     var durationHours by rememberSaveable { mutableStateOf("") }
     var notes by rememberSaveable { mutableStateOf("") }
     var formError by rememberSaveable { mutableStateOf<String?>(null) }
+    
+    // Map coordinates
+    var startLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var destinationLatLng by remember { mutableStateOf<LatLng?>(null) }
+    
+    val context = LocalContext.current
+    
+    // Update map coordinates when locations change
+    LaunchedEffect(startLocation) {
+        if (startLocation.isNotBlank()) {
+            // Check if it's a coordinate string (lat,lng)
+            val coordinates = GeocodingHelper.parseCoordinates(startLocation)
+            startLatLng = coordinates
+            // TODO: If not coordinates, use geocoding API to convert address to LatLng
+            // startLatLng = GeocodingHelper.addressToLatLng(startLocation, context)
+        } else {
+            startLatLng = null
+        }
+    }
+    
+    LaunchedEffect(destination) {
+        if (destination.isNotBlank()) {
+            val coordinates = GeocodingHelper.parseCoordinates(destination)
+            destinationLatLng = coordinates
+            // TODO: If not coordinates, use geocoding API to convert address to LatLng
+            // destinationLatLng = GeocodingHelper.addressToLatLng(destination, context)
+        } else {
+            destinationLatLng = null
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -93,12 +128,16 @@ fun LogTripScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp),
                 shape = RoundedCornerShape(32.dp),
                 tonalElevation = 2.dp
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
@@ -106,12 +145,22 @@ fun LogTripScreen(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
+                    
+                    // Always show map, even without coordinates
+                    GoogleMapView(
+                        startLocation = startLatLng,
+                        destination = destinationLatLng,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    )
+                    
+                    // Helper text
                     Text(
-                        text = "Google Maps preview will display here in Step 3.",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = "Tip: Enter coordinates as 'latitude,longitude' or address",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(120.dp))
                 }
             }
 
