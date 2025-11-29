@@ -89,4 +89,10 @@ dependencies {
     implementation("com.google.maps.android:maps-compose:4.3.0")
     implementation("com.google.maps.android:maps-compose-utils:4.3.0")
     implementation("com.google.maps.android:maps-compose-widgets:4.3.0")
+    
+    // Google Maps Services (for Directions API and Geocoding)
+    implementation("com.google.maps:google-maps-services:2.2.0")
+    
+    // OkHttp for API calls
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
