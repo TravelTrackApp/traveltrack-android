@@ -89,10 +89,12 @@ import week11.st765512.finalproject.ui.components.UnderlineTextField
 import week11.st765512.finalproject.ui.components.GoogleMapView
 import week11.st765512.finalproject.ui.components.ScreenStateWrapper
 import week11.st765512.finalproject.ui.components.SuccessPill
+import week11.st765512.finalproject.ui.components.AutocompleteTextField
 import week11.st765512.finalproject.ui.viewmodel.AuthViewModel
 import week11.st765512.finalproject.ui.viewmodel.TripViewModel
 import week11.st765512.finalproject.util.ApiKeyHelper
 import week11.st765512.finalproject.util.GeocodingHelper
+import week11.st765512.finalproject.util.PlacesAutocompleteHelper
 
 @Composable
 fun DrawerContent(
@@ -193,6 +195,11 @@ fun LogTripScreen(
     var uiState by remember { mutableStateOf(tripViewModel.uiState.value) }
     LaunchedEffect(Unit) {
         tripViewModel.uiState.collect { uiState = it }
+    }
+    
+    // Initialize Places SDK for autocomplete
+    LaunchedEffect(Unit) {
+        PlacesAutocompleteHelper.initialize(context)
     }
 
     var title by rememberSaveable { mutableStateOf("") }
@@ -509,20 +516,40 @@ fun LogTripScreen(
                         enabled = !uiState.isSubmitting
                     )
 
-                    UnderlineTextField(
+                    AutocompleteTextField(
                         value = startLocation,
                         onValueChange = { startLocation = it },
+                        onPlaceSelected = { placeDetails ->
+                            // Set the coordinates from selected place
+                            startLatLng = placeDetails.latLng
+                            startLocation = placeDetails.address.ifEmpty { placeDetails.name }
+                            
+                            // Calculate routes if destination is also set
+                            if (destinationLatLng != null && mapsApiKey != null) {
+                                calculateRoutes(placeDetails.latLng, destinationLatLng!!, mapsApiKey!!)
+                            }
+                        },
                         label = "Starting Point",
-                        placeholder = "Starting Point",
+                        placeholder = "Search or tap map",
                         enabled = !uiState.isSubmitting,
                         trailingIcon = Icons.Default.RadioButtonUnchecked
                     )
 
-                    UnderlineTextField(
+                    AutocompleteTextField(
                         value = destination,
                         onValueChange = { destination = it },
+                        onPlaceSelected = { placeDetails ->
+                            // Set the coordinates from selected place
+                            destinationLatLng = placeDetails.latLng
+                            destination = placeDetails.address.ifEmpty { placeDetails.name }
+                            
+                            // Calculate routes if start is also set
+                            if (startLatLng != null && mapsApiKey != null) {
+                                calculateRoutes(startLatLng!!, placeDetails.latLng, mapsApiKey!!)
+                            }
+                        },
                         label = "Destination Point",
-                        placeholder = "Destination Point",
+                        placeholder = "Search or tap map",
                         enabled = !uiState.isSubmitting,
                         trailingIcon = Icons.Default.LocationOn
                     )
