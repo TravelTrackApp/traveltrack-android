@@ -3,12 +3,17 @@ package week11.st765512.finalproject.ui.components
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -27,7 +32,8 @@ fun CustomTextField(
     keyboardType: KeyboardType = KeyboardType.Text,
     enabled: Boolean = true,
     singleLine: Boolean = true,
-    maxLines: Int = 1
+    maxLines: Int = 1,
+    trailingIcon: ImageVector? = null
 ) {
     OutlinedTextField(
         value = value,
@@ -50,6 +56,19 @@ fun CustomTextField(
         enabled = enabled,
         singleLine = singleLine,
         maxLines = maxLines,
+        trailingIcon = trailingIcon?.let { icon ->
+            {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (icon == Icons.Default.LocationOn) {
+                        Color(0xFFD32F2F) // Red color for location icon
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+        },
         colors = TextFieldDefaults.colors()
     )
 }

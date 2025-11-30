@@ -66,6 +66,8 @@ dependencies {
     
     // Firebase Firestore
     implementation("com.google.firebase:firebase-firestore-ktx")
+    // Firebase Storage
+    implementation("com.google.firebase:firebase-storage-ktx")
 
     // Image loading
     implementation("io.coil-kt:coil-compose:2.7.0")
@@ -83,4 +85,17 @@ dependencies {
 
     // Google Sign-In
     implementation("com.google.android.gms:play-services-auth:21.2.0")
+
+    // Google Maps
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation("com.google.android.gms:play-services-location:21.2.0")
+    implementation("com.google.maps.android:maps-compose:4.3.0")
+    implementation("com.google.maps.android:maps-compose-utils:4.3.0")
+    implementation("com.google.maps.android:maps-compose-widgets:4.3.0")
+    
+    // Google Maps Services (for Directions API and Geocoding)
+    implementation("com.google.maps:google-maps-services:2.2.0")
+    
+    // OkHttp for API calls
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }

@@ -127,7 +127,9 @@ class TripViewModel(
                 notes = input.notes,
                 distanceKm = input.distanceKm,
                 durationMinutes = input.durationMinutes,
+                routeInfo = input.routeInfo,
                 tags = input.tags,
+                photoUrls = input.photoUrls,
                 userId = userId
             )
 
@@ -141,6 +143,36 @@ class TripViewModel(
                         isSubmitting = false,
                         errorMessage = result.exception.message ?: "Unable to save trip."
                     )
+                }
+
+                Result.Loading -> Unit
+            }
+        }
+    }
+
+    fun updateTrip(tripId: String, updates: Map<String, Any>, onComplete: (() -> Unit)? = null) {
+        val userId = currentUserId ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSubmitting = true, errorMessage = null, successMessage = null) }
+
+            when (val result = repository.updateTrip(userId, tripId, updates)) {
+                is Result.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            successMessage = "Trip updated successfully!"
+                        )
+                    }
+                    onComplete?.invoke()
+                }
+
+                is Result.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            errorMessage = result.exception.message ?: "Failed to update trip."
+                        )
+                    }
                 }
 
                 Result.Loading -> Unit

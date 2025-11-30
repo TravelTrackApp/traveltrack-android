@@ -1,55 +1,192 @@
 package week11.st765512.finalproject.ui.screens.trips
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberDrawerState
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.google.android.gms.maps.model.LatLng
+import week11.st765512.finalproject.data.model.RouteInfo
+import week11.st765512.finalproject.data.repository.StorageRepository
+import week11.st765512.finalproject.util.DirectionsHelper
+import week11.st765512.finalproject.util.LocationHelper
+import week11.st765512.finalproject.util.ReverseGeocodingHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import week11.st765512.finalproject.data.model.Result
 import week11.st765512.finalproject.data.model.TripInput
 import week11.st765512.finalproject.ui.components.CustomButton
 import week11.st765512.finalproject.ui.components.CustomTextField
 import week11.st765512.finalproject.ui.components.ErrorText
+import week11.st765512.finalproject.ui.components.UnderlineTextField
+import week11.st765512.finalproject.ui.components.GoogleMapView
 import week11.st765512.finalproject.ui.components.ScreenStateWrapper
 import week11.st765512.finalproject.ui.components.SuccessPill
+import week11.st765512.finalproject.ui.viewmodel.AuthViewModel
 import week11.st765512.finalproject.ui.viewmodel.TripViewModel
+import week11.st765512.finalproject.util.ApiKeyHelper
+import week11.st765512.finalproject.util.GeocodingHelper
+
+@Composable
+fun DrawerContent(
+    onHome: () -> Unit,
+    onLogTrip: () -> Unit,
+    onSavedTrips: () -> Unit,
+    onLogout: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(260.dp)
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(24.dp),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "TravelTrack",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Navigate through the app",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+
+            NavigationDrawerItem(
+                label = { Text("Home") },
+                selected = false,
+                onClick = onHome,
+                colors = NavigationDrawerItemDefaults.colors()
+            )
+            NavigationDrawerItem(
+                label = { Text("Log Trip") },
+                selected = true,
+                onClick = onLogTrip,
+                colors = NavigationDrawerItemDefaults.colors()
+            )
+            NavigationDrawerItem(
+                label = { Text("View Trips") },
+                selected = false,
+                onClick = onSavedTrips,
+                colors = NavigationDrawerItemDefaults.colors()
+            )
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            tonalElevation = 1.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Logout",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "See you soon!",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = onLogout) {
+                    Icon(
+                        imageVector = Icons.Outlined.Logout,
+                        contentDescription = "Logout"
+                    )
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogTripScreen(
     tripViewModel: TripViewModel,
+    authViewModel: AuthViewModel,
     onNavigateBack: () -> Unit,
+    onNavigateToHome: () -> Unit = {},
+    onNavigateToTripList: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var uiState by remember { mutableStateOf(tripViewModel.uiState.value) }
     LaunchedEffect(Unit) {
         tripViewModel.uiState.collect { uiState = it }
@@ -58,26 +195,254 @@ fun LogTripScreen(
     var title by rememberSaveable { mutableStateOf("") }
     var startLocation by rememberSaveable { mutableStateOf("") }
     var destination by rememberSaveable { mutableStateOf("") }
-    var distance by rememberSaveable { mutableStateOf("") }
-    var durationHours by rememberSaveable { mutableStateOf("") }
     var notes by rememberSaveable { mutableStateOf("") }
     var formError by rememberSaveable { mutableStateOf<String?>(null) }
-
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("Log Trip") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+    
+    // Map coordinates and route
+    var startLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var destinationLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var routePoints by remember { mutableStateOf<List<LatLng>>(emptyList()) }
+    var drivingRouteInfo by remember { mutableStateOf<DirectionsHelper.RouteInfo?>(null) }
+    var bicyclingRouteInfo by remember { mutableStateOf<DirectionsHelper.RouteInfo?>(null) }
+    var walkingRouteInfo by remember { mutableStateOf<DirectionsHelper.RouteInfo?>(null) }
+    var calculatedDistance by remember { mutableStateOf(0.0) }
+    var calculatedDurationMinutes by remember { mutableStateOf(0) }
+    var isCalculatingRoute by remember { mutableStateOf(false) }
+    
+    // Selected image URI
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    
+    val mapsApiKey = remember { ApiKeyHelper.getMapsApiKey(context) }
+    
+    // Storage repository for uploading images
+    val storageRepository = remember { StorageRepository() }
+    
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            selectedImageUri = it
+        }
+    }
+    
+    // Permission launcher
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+        
+        if (fineLocationGranted || coarseLocationGranted) {
+            // Permission granted, get current location
+            scope.launch {
+                try {
+                    val location = LocationHelper.getCurrentLocation(context)
+                    if (location != null) {
+                        val latLng = LatLng(location.latitude, location.longitude)
+                        startLatLng = latLng
+                        val address = ReverseGeocodingHelper.getShortAddress(latLng, context)
+                        startLocation = address ?: "${latLng.latitude},${latLng.longitude}"
+                    } else {
+                        formError = "Unable to get current location. Please check location settings."
                     }
+                } catch (e: Exception) {
+                    formError = "Error getting location: ${e.message}"
+                }
+            }
+        } else {
+            formError = "Location permission is required to get your current location."
+        }
+    }
+    
+    // Function to get current location (with permission check)
+    fun getCurrentLocationWithPermission() {
+        // Check permission status at runtime
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        
+        if (hasPermission) {
+            // Permission already granted, get location directly
+            scope.launch {
+                try {
+                    val location = LocationHelper.getCurrentLocation(context)
+                    if (location != null) {
+                        val latLng = LatLng(location.latitude, location.longitude)
+                        startLatLng = latLng
+                        val address = ReverseGeocodingHelper.getShortAddress(latLng, context)
+                        startLocation = address ?: "${latLng.latitude},${latLng.longitude}"
+                    } else {
+                        formError = "Unable to get current location. Please check location settings."
+                    }
+                } catch (e: Exception) {
+                    formError = "Error getting location: ${e.message}"
+                }
+            }
+        } else {
+            // Request permission
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+    
+    // Calculate routes for all three travel modes
+    fun calculateRoutes(origin: LatLng, dest: LatLng, apiKey: String) {
+        isCalculatingRoute = true
+        scope.launch {
+            // Calculate driving route
+            when (val result = DirectionsHelper.getRoute(origin, dest, apiKey, context, DirectionsHelper.TravelMode.DRIVING)) {
+                is Result.Success -> {
+                    drivingRouteInfo = result.data
+                    calculatedDistance = result.data.distanceKm
+                    calculatedDurationMinutes = result.data.durationMinutes
+                    routePoints = result.data.polylinePoints
+                }
+                is Result.Error -> {
+                    val errorMsg = result.exception.message ?: "Unknown error"
+                    formError = if (errorMsg.contains("not authorized") || errorMsg.contains("API key")) {
+                        "API key configuration issue. Please check Google Cloud Console settings."
+                    } else {
+                        "Failed to calculate route: $errorMsg"
+                    }
+                }
+                is Result.Loading -> {}
+            }
+            
+            // Calculate bicycling route
+            DirectionsHelper.getRoute(origin, dest, apiKey, context, DirectionsHelper.TravelMode.BICYCLING).let { result ->
+                if (result is Result.Success) {
+                    bicyclingRouteInfo = result.data
+                }
+            }
+            
+            // Calculate walking route
+            DirectionsHelper.getRoute(origin, dest, apiKey, context, DirectionsHelper.TravelMode.WALKING).let { result ->
+                if (result is Result.Success) {
+                    walkingRouteInfo = result.data
+                }
+            }
+            
+            isCalculatingRoute = false
+        }
+    }
+    
+    // Handle map click to select locations
+    fun handleMapLocationSelected(latLng: LatLng) {
+        scope.launch {
+            // Determine if we should set start or destination based on current state
+            val isStart = startLatLng == null
+            
+            if (isStart) {
+                // Set start location
+                startLatLng = latLng
+                // Get address from coordinates
+                val address = ReverseGeocodingHelper.getShortAddress(latLng, context)
+                startLocation = address ?: "${latLng.latitude},${latLng.longitude}"
+            } else {
+                // Set destination location
+                destinationLatLng = latLng
+                // Get address from coordinates
+                val address = ReverseGeocodingHelper.getShortAddress(latLng, context)
+                destination = address ?: "${latLng.latitude},${latLng.longitude}"
+            }
+            
+            // Calculate routes if both points are set
+            if (startLatLng != null && destinationLatLng != null && mapsApiKey != null) {
+                calculateRoutes(startLatLng!!, destinationLatLng!!, mapsApiKey)
+            }
+        }
+    }
+    
+    // Update map coordinates when text input changes
+    LaunchedEffect(startLocation) {
+        if (startLocation.isNotBlank() && startLatLng == null) {
+            // Check if it's a coordinate string (lat,lng)
+            val coordinates = GeocodingHelper.parseCoordinates(startLocation)
+            coordinates?.let {
+                startLatLng = it
+                // Calculate routes if destination is also set
+                if (destinationLatLng != null && mapsApiKey != null) {
+                    calculateRoutes(it, destinationLatLng!!, mapsApiKey!!)
+                }
+            }
+        }
+    }
+    
+    LaunchedEffect(destination) {
+        if (destination.isNotBlank() && destinationLatLng == null) {
+            val coordinates = GeocodingHelper.parseCoordinates(destination)
+            coordinates?.let {
+                destinationLatLng = it
+                // Calculate routes if start is also set
+                if (startLatLng != null && mapsApiKey != null) {
+                    calculateRoutes(startLatLng!!, it, mapsApiKey!!)
+                }
+            }
+        }
+    }
+    
+    // Calculate routes when both coordinates are available
+    LaunchedEffect(startLatLng, destinationLatLng) {
+        if (startLatLng != null && destinationLatLng != null && mapsApiKey != null && routePoints.isEmpty()) {
+            calculateRoutes(startLatLng!!, destinationLatLng!!, mapsApiKey!!)
+        }
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            DrawerContent(
+                onHome = {
+                    scope.launch { drawerState.close() }
+                    onNavigateToHome()
+                },
+                onLogTrip = {
+                    scope.launch { drawerState.close() }
+                },
+                onSavedTrips = {
+                    scope.launch { drawerState.close() }
+                    onNavigateToTripList()
+                },
+                onLogout = {
+                    scope.launch { drawerState.close() }
+                    authViewModel.signOut()
                 }
             )
         }
-    ) { padding ->
+    ) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Log Trip") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back"
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription = "Menu"
+                            )
+                        }
+                    }
+                )
+            }
+        ) { padding ->
         ScreenStateWrapper(
             isLoading = uiState.isSubmitting || uiState.isLoading,
             errorMessage = uiState.errorMessage,
@@ -88,127 +453,278 @@ fun LogTripScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(32.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(450.dp),
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                 tonalElevation = 2.dp
             ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Map preview",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "Google Maps preview will display here in Step 3.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(120.dp))
-                }
-            }
-
-            CustomTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = "Trip Title",
-                enabled = !uiState.isSubmitting
-            )
-
-            CustomTextField(
-                value = startLocation,
-                onValueChange = { startLocation = it },
-                label = "Starting Point",
-                enabled = !uiState.isSubmitting
-            )
-
-            CustomTextField(
-                value = destination,
-                onValueChange = { destination = it },
-                label = "Destination Point",
-                enabled = !uiState.isSubmitting
-            )
-
-            CustomTextField(
-                value = distance,
-                onValueChange = { distance = it },
-                label = "Distance (km)",
-                keyboardType = KeyboardType.Decimal,
-                enabled = !uiState.isSubmitting
-            )
-
-            CustomTextField(
-                value = durationHours,
-                onValueChange = { durationHours = it },
-                label = "Duration (hrs)",
-                keyboardType = KeyboardType.Decimal,
-                enabled = !uiState.isSubmitting
-            )
-
-            CustomTextField(
-                value = notes,
-                onValueChange = { notes = it },
-                label = "Notes",
-                singleLine = false,
-                maxLines = 4,
-                enabled = !uiState.isSubmitting
-            )
-
-            ErrorText(message = formError)
-
-            uiState.successMessage?.let { message ->
-                SuccessPill(
-                    message = message,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                // Map with click-to-select functionality
+                GoogleMapView(
+                    startLocation = startLatLng,
+                    destination = destinationLatLng,
+                    onLocationSelected = { latLng ->
+                        handleMapLocationSelected(latLng)
+                    },
+                    routePoints = routePoints,
+                    drivingRouteInfo = drivingRouteInfo,
+                    bicyclingRouteInfo = bicyclingRouteInfo,
+                    walkingRouteInfo = walkingRouteInfo,
+                    onGetCurrentLocation = {
+                        // Get current location with permission check
+                        getCurrentLocationWithPermission()
+                    },
+                    modifier = Modifier.fillMaxSize()
                 )
             }
 
-            CustomButton(
-                text = "Save Trip",
-                onClick = {
-                    if (startLocation.isBlank() || destination.isBlank() || title.isBlank()) {
-                        formError = "Please fill out all required fields."
-                        return@CustomButton
-                    }
-                    val distanceValue = distance.toDoubleOrNull() ?: 0.0
-                    val durationMinutes = ((durationHours.toDoubleOrNull() ?: 0.0) * 60).roundToInt()
-
-                    formError = null
-                    tripViewModel.saveTrip(
-                        TripInput(
-                            title = title,
-                            startLocation = startLocation,
-                            destinationLocation = destination,
-                            notes = notes,
-                            distanceKm = distanceValue,
-                            durationMinutes = durationMinutes
-                        )
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    UnderlineTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = "Trip Name",
+                        placeholder = "Trip Name",
+                        enabled = !uiState.isSubmitting
                     )
-                },
-                isLoading = uiState.isSubmitting,
-                enabled = title.isNotBlank() && startLocation.isNotBlank() && destination.isNotBlank()
-            )
-        }
-        }
-    }
 
-    LaunchedEffect(uiState.successMessage) {
-        if (uiState.successMessage != null) {
-            title = ""
-            startLocation = ""
-            destination = ""
-            distance = ""
-            durationHours = ""
-            notes = ""
-            delay(2500)
-            tripViewModel.clearMessage()
+                    UnderlineTextField(
+                        value = startLocation,
+                        onValueChange = { startLocation = it },
+                        label = "Starting Point",
+                        placeholder = "Starting Point",
+                        enabled = !uiState.isSubmitting,
+                        trailingIcon = Icons.Default.RadioButtonUnchecked
+                    )
+
+                    UnderlineTextField(
+                        value = destination,
+                        onValueChange = { destination = it },
+                        label = "Destination Point",
+                        placeholder = "Destination Point",
+                        enabled = !uiState.isSubmitting,
+                        trailingIcon = Icons.Default.LocationOn
+                    )
+
+                    UnderlineTextField(
+                        value = notes,
+                        onValueChange = { notes = it },
+                        label = "Notes",
+                        placeholder = "Notes",
+                        enabled = !uiState.isSubmitting,
+                        singleLine = false,
+                        maxLines = 4
+                    )
+                    
+                    // Photo selection section
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Photo",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Display selected image or placeholder
+                            if (selectedImageUri != null) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(
+                                        ImageRequest.Builder(context)
+                                            .data(selectedImageUri)
+                                            .build()
+                                    ),
+                                    contentDescription = "Selected photo",
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { imagePickerLauncher.launch("image/*") },
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            
+                            // Add photo button
+                            Button(
+                                onClick = { imagePickerLauncher.launch("image/*") },
+                                enabled = !uiState.isSubmitting,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                modifier = Modifier.height(80.dp)
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                    modifier = Modifier.padding(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Add photo",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        text = if (selectedImageUri == null) "Add Photo" else "Change",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    ErrorText(message = formError)
+
+                    uiState.successMessage?.let { message ->
+                        SuccessPill(
+                            message = message,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
+                    }
+
+                    CustomButton(
+                        text = "Log Trip",
+                        onClick = {
+                            if (title.isBlank() || startLocation.isBlank() || destination.isBlank()) {
+                                formError = "Please fill out all required fields."
+                                return@CustomButton
+                            }
+                            
+                            formError = null
+                            
+                            // Upload image and save trip
+                            scope.launch {
+                                try {
+                                    var photoUrls = emptyList<String>()
+                                    
+                                    // Upload image if selected
+                                    selectedImageUri?.let { uri ->
+                                        when (val uploadResult = storageRepository.uploadImage(uri)) {
+                                            is Result.Success -> {
+                                                photoUrls = listOf(uploadResult.data)
+                                            }
+                                            is Result.Error -> {
+                                                formError = "Failed to upload image: ${uploadResult.exception.message}"
+                                                return@launch
+                                            }
+                                            Result.Loading -> Unit
+                                        }
+                                    }
+                                    
+                                    // Build route info list from calculated routes
+                                    val routeInfoList = mutableListOf<RouteInfo>()
+                                    drivingRouteInfo?.let { info ->
+                                        routeInfoList.add(
+                                            RouteInfo(
+                                                travelMode = "DRIVING",
+                                                distanceKm = info.distanceKm,
+                                                durationMinutes = info.durationMinutes
+                                            )
+                                        )
+                                    }
+                                    bicyclingRouteInfo?.let { info ->
+                                        routeInfoList.add(
+                                            RouteInfo(
+                                                travelMode = "BICYCLING",
+                                                distanceKm = info.distanceKm,
+                                                durationMinutes = info.durationMinutes
+                                            )
+                                        )
+                                    }
+                                    walkingRouteInfo?.let { info ->
+                                        routeInfoList.add(
+                                            RouteInfo(
+                                                travelMode = "WALKING",
+                                                distanceKm = info.distanceKm,
+                                                durationMinutes = info.durationMinutes
+                                            )
+                                        )
+                                    }
+                                    
+                                    // Use calculated values if available, otherwise use manual input
+                                    val distanceValue = if (calculatedDistance > 0) {
+                                        calculatedDistance
+                                    } else {
+                                        0.0
+                                    }
+                                    
+                                    val durationMinutes = if (calculatedDurationMinutes > 0) {
+                                        calculatedDurationMinutes
+                                    } else {
+                                        0
+                                    }
+                                    
+                                    // Save trip with all data
+                                    tripViewModel.saveTrip(
+                                        TripInput(
+                                            title = title,
+                                            startLocation = startLocation,
+                                            destinationLocation = destination,
+                                            notes = notes,
+                                            distanceKm = distanceValue,
+                                            durationMinutes = durationMinutes,
+                                            routeInfo = routeInfoList,
+                                            photoUrls = photoUrls
+                                        )
+                                    )
+                                } catch (e: Exception) {
+                                    formError = "Error saving trip: ${e.message}"
+                                }
+                            }
+                        },
+                        isLoading = uiState.isSubmitting || isCalculatingRoute,
+                        enabled = title.isNotBlank() && startLocation.isNotBlank() && destination.isNotBlank() && !isCalculatingRoute
+                    )
+                }
+            }
+        }
+        }
+        }
+        
+        LaunchedEffect(uiState.successMessage) {
+            if (uiState.successMessage != null) {
+                title = ""
+                startLocation = ""
+                destination = ""
+                notes = ""
+                startLatLng = null
+                destinationLatLng = null
+                routePoints = emptyList()
+                drivingRouteInfo = null
+                bicyclingRouteInfo = null
+                walkingRouteInfo = null
+                calculatedDistance = 0.0
+                calculatedDurationMinutes = 0
+                selectedImageUri = null
+                delay(2500)
+                tripViewModel.clearMessage()
+            }
         }
     }
 }

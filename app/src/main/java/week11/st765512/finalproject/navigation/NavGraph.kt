@@ -115,7 +115,10 @@ fun NavGraph(
         composable(Screen.LogTrip.route) {
             LogTripScreen(
                 tripViewModel = tripViewModel,
-                onNavigateBack = { navController.popBackStack() }
+                authViewModel = authViewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToHome = { navController.navigate(Screen.Home.route) },
+                onNavigateToTripList = { navController.navigate(Screen.TripList.route) }
             )
         }
 
