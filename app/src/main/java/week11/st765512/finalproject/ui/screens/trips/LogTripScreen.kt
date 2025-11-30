@@ -40,6 +40,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
@@ -47,6 +48,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import android.Manifest
 import android.content.Intent
@@ -89,63 +91,111 @@ import week11.st765512.finalproject.ui.components.UnderlineTextField
 import week11.st765512.finalproject.ui.components.GoogleMapView
 import week11.st765512.finalproject.ui.components.ScreenStateWrapper
 import week11.st765512.finalproject.ui.components.SuccessPill
+import week11.st765512.finalproject.ui.components.AutocompleteTextField
 import week11.st765512.finalproject.ui.viewmodel.AuthViewModel
 import week11.st765512.finalproject.ui.viewmodel.TripViewModel
 import week11.st765512.finalproject.util.ApiKeyHelper
 import week11.st765512.finalproject.util.GeocodingHelper
+import week11.st765512.finalproject.util.PlacesAutocompleteHelper
 
 @Composable
 fun DrawerContent(
     onHome: () -> Unit,
     onLogTrip: () -> Unit,
     onSavedTrips: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    selectedItem: String = "Log Trip"
 ) {
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .width(260.dp)
+            .width(280.dp)
             .background(MaterialTheme.colorScheme.surface)
-            .padding(24.dp),
+            .padding(horizontal = 20.dp, vertical = 32.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = "TravelTrack",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Navigate through the app",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(24.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // App branding section
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "TravelTrack",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Your journey companion",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
 
             NavigationDrawerItem(
-                label = { Text("Home") },
-                selected = false,
+                label = { 
+                    Text(
+                        "Home",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    ) 
+                },
+                selected = selectedItem == "Home",
                 onClick = onHome,
-                colors = NavigationDrawerItemDefaults.colors()
+                shape = RoundedCornerShape(14.dp),
+                colors = NavigationDrawerItemDefaults.colors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    unselectedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                )
             )
             NavigationDrawerItem(
-                label = { Text("Log Trip") },
-                selected = true,
+                label = { 
+                    Text(
+                        "Log Trip",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    ) 
+                },
+                selected = selectedItem == "Log Trip",
                 onClick = onLogTrip,
-                colors = NavigationDrawerItemDefaults.colors()
+                shape = RoundedCornerShape(14.dp),
+                colors = NavigationDrawerItemDefaults.colors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    unselectedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                )
             )
             NavigationDrawerItem(
-                label = { Text("View Trips") },
-                selected = false,
+                label = { 
+                    Text(
+                        "View Trips",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    ) 
+                },
+                selected = selectedItem == "View Trips",
                 onClick = onSavedTrips,
-                colors = NavigationDrawerItemDefaults.colors()
+                shape = RoundedCornerShape(14.dp),
+                colors = NavigationDrawerItemDefaults.colors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    unselectedContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                )
             )
         }
 
+        // Logout section
         Surface(
+            onClick = onLogout,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            tonalElevation = 1.dp
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
         ) {
             Row(
                 modifier = Modifier
@@ -158,20 +208,20 @@ fun DrawerContent(
                     Text(
                         text = "Logout",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onErrorContainer
                     )
                     Text(
                         text = "See you soon!",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
                     )
                 }
-                IconButton(onClick = onLogout) {
-                    Icon(
-                        imageVector = Icons.Outlined.Logout,
-                        contentDescription = "Logout"
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Outlined.Logout,
+                    contentDescription = "Logout",
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
             }
         }
     }
@@ -193,6 +243,11 @@ fun LogTripScreen(
     var uiState by remember { mutableStateOf(tripViewModel.uiState.value) }
     LaunchedEffect(Unit) {
         tripViewModel.uiState.collect { uiState = it }
+    }
+    
+    // Initialize Places SDK for autocomplete
+    LaunchedEffect(Unit) {
+        PlacesAutocompleteHelper.initialize(context)
     }
 
     var title by rememberSaveable { mutableStateOf("") }
@@ -409,31 +464,49 @@ fun LogTripScreen(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = true,
         drawerContent = {
-            DrawerContent(
-                onHome = {
-                    scope.launch { drawerState.close() }
-                    onNavigateToHome()
-                },
-                onLogTrip = {
-                    scope.launch { drawerState.close() }
-                },
-                onSavedTrips = {
-                    scope.launch { drawerState.close() }
-                    onNavigateToTripList()
-                },
-                onLogout = {
-                    scope.launch { drawerState.close() }
-                    authViewModel.signOut()
-                }
-            )
+            ModalDrawerSheet {
+                DrawerContent(
+                    onHome = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToHome()
+                    },
+                    onLogTrip = {
+                        scope.launch { drawerState.close() }
+                    },
+                    onSavedTrips = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToTripList()
+                    },
+                    onLogout = {
+                        scope.launch { drawerState.close() }
+                        authViewModel.signOut()
+                    },
+                    selectedItem = "Log Trip"
+                )
+            }
         }
     ) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Log Trip") },
+                    title = { 
+                        Text(
+                            "Log Trip",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold
+                        ) 
+                    },
                     navigationIcon = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription = "Menu"
+                            )
+                        }
+                    },
+                    actions = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -441,14 +514,10 @@ fun LogTripScreen(
                             )
                         }
                     },
-                    actions = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(
-                                imageVector = Icons.Default.Menu,
-                                contentDescription = "Menu"
-                            )
-                        }
-                    }
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface
+                    )
                 )
             }
         ) { padding ->
@@ -465,12 +534,14 @@ fun LogTripScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
+            // Map section with rounded corners
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(450.dp),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                tonalElevation = 2.dp
+                    .height(420.dp),
+                shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp),
+                tonalElevation = 2.dp,
+                shadowElevation = 4.dp
             ) {
                 // Map with click-to-select functionality
                 GoogleMapView(
@@ -491,15 +562,16 @@ fun LogTripScreen(
                 )
             }
 
+            // Form section
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.background
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(horizontal = 20.dp, vertical = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     UnderlineTextField(
                         value = title,
@@ -509,20 +581,40 @@ fun LogTripScreen(
                         enabled = !uiState.isSubmitting
                     )
 
-                    UnderlineTextField(
+                    AutocompleteTextField(
                         value = startLocation,
                         onValueChange = { startLocation = it },
+                        onPlaceSelected = { placeDetails ->
+                            // Set the coordinates from selected place
+                            startLatLng = placeDetails.latLng
+                            startLocation = placeDetails.address.ifEmpty { placeDetails.name }
+                            
+                            // Calculate routes if destination is also set
+                            if (destinationLatLng != null && mapsApiKey != null) {
+                                calculateRoutes(placeDetails.latLng, destinationLatLng!!, mapsApiKey!!)
+                            }
+                        },
                         label = "Starting Point",
-                        placeholder = "Starting Point",
+                        placeholder = "Search or tap map",
                         enabled = !uiState.isSubmitting,
                         trailingIcon = Icons.Default.RadioButtonUnchecked
                     )
 
-                    UnderlineTextField(
+                    AutocompleteTextField(
                         value = destination,
                         onValueChange = { destination = it },
+                        onPlaceSelected = { placeDetails ->
+                            // Set the coordinates from selected place
+                            destinationLatLng = placeDetails.latLng
+                            destination = placeDetails.address.ifEmpty { placeDetails.name }
+                            
+                            // Calculate routes if start is also set
+                            if (startLatLng != null && mapsApiKey != null) {
+                                calculateRoutes(startLatLng!!, placeDetails.latLng, mapsApiKey!!)
+                            }
+                        },
                         label = "Destination Point",
-                        placeholder = "Destination Point",
+                        placeholder = "Search or tap map",
                         enabled = !uiState.isSubmitting,
                         trailingIcon = Icons.Default.LocationOn
                     )
@@ -539,57 +631,66 @@ fun LogTripScreen(
                     
                     // Photo selection section
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
-                            text = "Photo",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "Photo (Optional)",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
                         )
                         
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // Display selected image or placeholder
                             if (selectedImageUri != null) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(
-                                        ImageRequest.Builder(context)
-                                            .data(selectedImageUri)
-                                            .build()
-                                    ),
-                                    contentDescription = "Selected photo",
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .clickable { launchImagePicker() },
-                                    contentScale = ContentScale.Crop
-                                )
+                                Surface(
+                                    modifier = Modifier.size(76.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    onClick = { launchImagePicker() }
+                                ) {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(
+                                            ImageRequest.Builder(context)
+                                                .data(selectedImageUri)
+                                                .build()
+                                        ),
+                                        contentDescription = "Selected photo",
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
                             }
                             
                             // Add photo button
-                            Button(
+                            Surface(
                                 onClick = { launchImagePicker() },
                                 enabled = !uiState.isSubmitting,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                ),
-                                modifier = Modifier.height(80.dp)
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier
+                                    .height(76.dp)
+                                    .fillMaxWidth(if (selectedImageUri != null) 0.5f else 1f)
                             ) {
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center,
-                                    modifier = Modifier.padding(8.dp)
+                                    modifier = Modifier.padding(12.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Add,
                                         contentDescription = "Add photo",
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier.size(22.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = if (selectedImageUri == null) "Add Photo" else "Change",
-                                        style = MaterialTheme.typography.bodySmall
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -598,15 +699,16 @@ fun LogTripScreen(
                 }
             }
 
+            // Submit section
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.background
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(horizontal = 20.dp, vertical = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     ErrorText(message = formError)
 

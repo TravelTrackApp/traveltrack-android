@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,13 +26,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collect
@@ -83,7 +88,13 @@ fun TripDetailScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(trip?.title ?: "Trip Details") },
+                title = { 
+                    Text(
+                        text = trip?.title ?: "Trip Details",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -94,29 +105,64 @@ fun TripDetailScreen(
                 },
                 actions = {
                     if (!isEditing) {
-                        IconButton(onClick = { isEditing = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit")
+                        Surface(
+                            onClick = { isEditing = true },
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit, 
+                                contentDescription = "Edit",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(10.dp)
+                            )
                         }
                     } else {
-                        IconButton(onClick = { isEditing = false }) {
-                            Icon(Icons.Default.Close, contentDescription = "Cancel edit")
+                        Surface(
+                            onClick = { isEditing = false },
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close, 
+                                contentDescription = "Cancel edit",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(10.dp)
+                            )
                         }
                     }
+                    
+                    Spacer(modifier = Modifier.size(8.dp))
 
-                    IconButton(onClick = {
-                        tripViewModel.deleteTrip(tripId) {
-                            tripViewModel.clearSelectedTrip()
-                            onTripDeleted()
-                        }
-                    }) {
+                    Surface(
+                        onClick = {
+                            tripViewModel.deleteTrip(tripId) {
+                                tripViewModel.clearSelectedTrip()
+                                onTripDeleted()
+                            }
+                        },
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                        modifier = Modifier.size(40.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.Outlined.Delete,
-                            contentDescription = "Delete trip"
+                            contentDescription = "Delete trip",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(10.dp)
                         )
                     }
-                }
+                    
+                    Spacer(modifier = Modifier.size(8.dp))
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background
+                )
             )
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = modifier
@@ -181,63 +227,138 @@ fun TripDetailScreen(
 
 @Composable
 fun ViewModeContent(trip: Trip) {
-
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(32.dp),
-                tonalElevation = 2.dp
+    // Route card
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(24.dp),
+                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+            ),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier.padding(22.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // Route header
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(8.dp)
+                ) {}
+                Text(
+                    text = trip.startLocation,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            
+            Text(
+                text = "↓",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.padding(start = 0.dp)
+            )
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(8.dp)
+                ) {}
+                Text(
+                    text = trip.destinationLocation,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            // Notes
+            if (trip.notes.isNotBlank()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 ) {
                     Text(
-                        text = "${trip.startLocation} → ${trip.destinationLocation}",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = trip.notes.ifBlank { "No notes added yet." },
+                        text = trip.notes,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    RowInfoChips(
-                        distance = trip.distanceKm,
-                        durationMinutes = trip.durationMinutes
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f),
+                        modifier = Modifier.padding(14.dp)
                     )
                 }
+            } else {
+                Text(
+                    text = "No notes added",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
             }
-
-    Spacer(modifier = Modifier.height(16.dp))
-
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
-                tonalElevation = 1.dp
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "Trip Metadata",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    InfoChip(
-                        label = "Logged On",
-                        value = TimeFormatter.formatDate(trip.createdAt)
-                    )
-                    InfoChip(
-                        label = "Tags",
-                        value = if (trip.tags.isEmpty()) "Not tagged" else trip.tags.joinToString()
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
+            
+            Spacer(modifier = Modifier.height(2.dp))
+            
+            // Stats row
+            RowInfoChips(
+                distance = trip.distanceKm,
+                durationMinutes = trip.durationMinutes
+            )
         }
+    }
+
+    Spacer(modifier = Modifier.height(18.dp))
+
+    // Metadata card
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text(
+                text = "Trip Details",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                InfoChip(
+                    label = "Logged On",
+                    value = TimeFormatter.formatDate(trip.createdAt),
+                    modifier = Modifier.weight(1f)
+                )
+                InfoChip(
+                    label = "Tags",
+                    value = if (trip.tags.isEmpty()) "None" else trip.tags.joinToString(),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(8.dp))
+}
 
 @Composable
 private fun RowInfoChips(distance: Double, durationMinutes: Int) {
