@@ -284,28 +284,6 @@ fun GoogleMapView(
             }
         }
         
-        // Show hint if no coordinates
-        if (startLocation == null && destination == null && drivingRouteInfo == null && bicyclingRouteInfo == null && walkingRouteInfo == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                    )
-                ) {
-                    Text(
-                        text = "Enter coordinates (lat,lng) to see markers",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
     }
 }
 
