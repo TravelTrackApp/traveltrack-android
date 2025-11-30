@@ -134,6 +134,8 @@ class TripViewModel(
                 title = input.title,
                 startLocation = input.startLocation,
                 destinationLocation = input.destinationLocation,
+                startLatLng = input.startLatLng,
+                destinationLatLng = input.destinationLatLng,
                 notes = input.notes,
                 distanceKm = input.distanceKm,
                 durationMinutes = input.durationMinutes,
