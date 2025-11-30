@@ -112,14 +112,14 @@ fun GoogleMapView(
                 val centerLng = (startLocation.longitude + destination.longitude) / 2
                 val center = LatLng(centerLat, centerLng)
                 
-                // Calculate zoom level based on distance - moderate zoom
+                // Calculate zoom level based on distance - less zoom for better overview
                 val distance = calculateDistance(startLocation, destination)
                 val zoomLevel = when {
-                    distance < 5.0 -> 14f  // Very close
-                    distance < 20.0 -> 12f  // Close
-                    distance < 50.0 -> 11f  // Medium distance
-                    distance < 100.0 -> 10f  // Medium-far distance
-                    else -> 9f  // Far
+                    distance < 5.0 -> 13f  // Very close
+                    distance < 20.0 -> 11f  // Close
+                    distance < 50.0 -> 10f  // Medium distance
+                    distance < 100.0 -> 9f  // Medium-far distance
+                    else -> 8f  // Far
                 }
                 
                 cameraPositionState.animate(

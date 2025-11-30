@@ -127,7 +127,9 @@ class TripViewModel(
                 notes = input.notes,
                 distanceKm = input.distanceKm,
                 durationMinutes = input.durationMinutes,
+                routeInfo = input.routeInfo,
                 tags = input.tags,
+                photoUrls = input.photoUrls,
                 userId = userId
             )
 

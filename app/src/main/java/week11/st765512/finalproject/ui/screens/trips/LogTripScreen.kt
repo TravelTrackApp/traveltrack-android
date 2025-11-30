@@ -19,12 +19,22 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Logout
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -40,6 +50,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -57,6 +68,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.LatLng
+import week11.st765512.finalproject.data.model.RouteInfo
+import week11.st765512.finalproject.data.repository.StorageRepository
+import week11.st765512.finalproject.util.DirectionsHelper
 import week11.st765512.finalproject.util.LocationHelper
 import week11.st765512.finalproject.util.ReverseGeocodingHelper
 import kotlinx.coroutines.delay
@@ -75,7 +89,6 @@ import week11.st765512.finalproject.ui.components.SuccessPill
 import week11.st765512.finalproject.ui.viewmodel.AuthViewModel
 import week11.st765512.finalproject.ui.viewmodel.TripViewModel
 import week11.st765512.finalproject.util.ApiKeyHelper
-import week11.st765512.finalproject.util.DirectionsHelper
 import week11.st765512.finalproject.util.GeocodingHelper
 
 @Composable
@@ -196,7 +209,22 @@ fun LogTripScreen(
     var calculatedDurationMinutes by remember { mutableStateOf(0) }
     var isCalculatingRoute by remember { mutableStateOf(false) }
     
+    // Selected image URI
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    
     val mapsApiKey = remember { ApiKeyHelper.getMapsApiKey(context) }
+    
+    // Storage repository for uploading images
+    val storageRepository = remember { StorageRepository() }
+    
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            selectedImageUri = it
+        }
+    }
     
     // Permission launcher
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -423,7 +451,9 @@ fun LogTripScreen(
                 .padding(padding)
         ) {
             Column(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
             Surface(
@@ -488,14 +518,74 @@ fun LogTripScreen(
                         trailingIcon = Icons.Default.LocationOn
                     )
 
-                    CustomTextField(
+                    UnderlineTextField(
                         value = notes,
                         onValueChange = { notes = it },
                         label = "Notes",
+                        placeholder = "Notes",
+                        enabled = !uiState.isSubmitting,
                         singleLine = false,
-                        maxLines = 4,
-                        enabled = !uiState.isSubmitting
+                        maxLines = 4
                     )
+                    
+                    // Photo selection section
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Photo",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Display selected image or placeholder
+                            if (selectedImageUri != null) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(
+                                        ImageRequest.Builder(context)
+                                            .data(selectedImageUri)
+                                            .build()
+                                    ),
+                                    contentDescription = "Selected photo",
+                                    modifier = Modifier
+                                        .size(80.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { imagePickerLauncher.launch("image/*") },
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            
+                            // Add photo button
+                            Button(
+                                onClick = { imagePickerLauncher.launch("image/*") },
+                                enabled = !uiState.isSubmitting,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                modifier = Modifier.height(80.dp)
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                    modifier = Modifier.padding(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Add photo",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        text = if (selectedImageUri == null) "Add Photo" else "Change",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -526,30 +616,87 @@ fun LogTripScreen(
                                 return@CustomButton
                             }
                             
-                            // Use calculated values if available, otherwise use manual input
-                            val distanceValue = if (calculatedDistance > 0) {
-                                calculatedDistance
-                            } else {
-                                0.0
-                            }
-                            
-                            val durationMinutes = if (calculatedDurationMinutes > 0) {
-                                calculatedDurationMinutes
-                            } else {
-                                0
-                            }
-
                             formError = null
-                            tripViewModel.saveTrip(
-                                TripInput(
-                                    title = title,
-                                    startLocation = startLocation,
-                                    destinationLocation = destination,
-                                    notes = notes,
-                                    distanceKm = distanceValue,
-                                    durationMinutes = durationMinutes
-                                )
-                            )
+                            
+                            // Upload image and save trip
+                            scope.launch {
+                                try {
+                                    var photoUrls = emptyList<String>()
+                                    
+                                    // Upload image if selected
+                                    selectedImageUri?.let { uri ->
+                                        when (val uploadResult = storageRepository.uploadImage(uri)) {
+                                            is Result.Success -> {
+                                                photoUrls = listOf(uploadResult.data)
+                                            }
+                                            is Result.Error -> {
+                                                formError = "Failed to upload image: ${uploadResult.exception.message}"
+                                                return@launch
+                                            }
+                                            Result.Loading -> Unit
+                                        }
+                                    }
+                                    
+                                    // Build route info list from calculated routes
+                                    val routeInfoList = mutableListOf<RouteInfo>()
+                                    drivingRouteInfo?.let { info ->
+                                        routeInfoList.add(
+                                            RouteInfo(
+                                                travelMode = "DRIVING",
+                                                distanceKm = info.distanceKm,
+                                                durationMinutes = info.durationMinutes
+                                            )
+                                        )
+                                    }
+                                    bicyclingRouteInfo?.let { info ->
+                                        routeInfoList.add(
+                                            RouteInfo(
+                                                travelMode = "BICYCLING",
+                                                distanceKm = info.distanceKm,
+                                                durationMinutes = info.durationMinutes
+                                            )
+                                        )
+                                    }
+                                    walkingRouteInfo?.let { info ->
+                                        routeInfoList.add(
+                                            RouteInfo(
+                                                travelMode = "WALKING",
+                                                distanceKm = info.distanceKm,
+                                                durationMinutes = info.durationMinutes
+                                            )
+                                        )
+                                    }
+                                    
+                                    // Use calculated values if available, otherwise use manual input
+                                    val distanceValue = if (calculatedDistance > 0) {
+                                        calculatedDistance
+                                    } else {
+                                        0.0
+                                    }
+                                    
+                                    val durationMinutes = if (calculatedDurationMinutes > 0) {
+                                        calculatedDurationMinutes
+                                    } else {
+                                        0
+                                    }
+                                    
+                                    // Save trip with all data
+                                    tripViewModel.saveTrip(
+                                        TripInput(
+                                            title = title,
+                                            startLocation = startLocation,
+                                            destinationLocation = destination,
+                                            notes = notes,
+                                            distanceKm = distanceValue,
+                                            durationMinutes = durationMinutes,
+                                            routeInfo = routeInfoList,
+                                            photoUrls = photoUrls
+                                        )
+                                    )
+                                } catch (e: Exception) {
+                                    formError = "Error saving trip: ${e.message}"
+                                }
+                            }
                         },
                         isLoading = uiState.isSubmitting || isCalculatingRoute,
                         enabled = title.isNotBlank() && startLocation.isNotBlank() && destination.isNotBlank() && !isCalculatingRoute
@@ -566,14 +713,15 @@ fun LogTripScreen(
                 startLocation = ""
                 destination = ""
                 notes = ""
-            startLatLng = null
-            destinationLatLng = null
-            routePoints = emptyList()
-            drivingRouteInfo = null
-            bicyclingRouteInfo = null
-            walkingRouteInfo = null
-            calculatedDistance = 0.0
-            calculatedDurationMinutes = 0
+                startLatLng = null
+                destinationLatLng = null
+                routePoints = emptyList()
+                drivingRouteInfo = null
+                bicyclingRouteInfo = null
+                walkingRouteInfo = null
+                calculatedDistance = 0.0
+                calculatedDurationMinutes = 0
+                selectedImageUri = null
                 delay(2500)
                 tripViewModel.clearMessage()
             }

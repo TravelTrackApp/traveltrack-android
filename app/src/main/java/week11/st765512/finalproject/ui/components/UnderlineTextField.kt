@@ -31,7 +31,9 @@ fun UnderlineTextField(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     trailingIcon: ImageVector? = null,
-    placeholder: String = ""
+    placeholder: String = "",
+    singleLine: Boolean = true,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE
 ) {
     Column(
         modifier = modifier.fillMaxWidth()
@@ -49,7 +51,8 @@ fun UnderlineTextField(
                     .weight(1f)
                     .padding(vertical = 4.dp),
                 enabled = enabled,
-                singleLine = true,
+                singleLine = singleLine,
+                maxLines = maxLines,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
