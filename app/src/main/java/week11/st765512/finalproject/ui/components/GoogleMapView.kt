@@ -1,25 +1,44 @@
 package week11.st765512.finalproject.ui.components
 
+import android.location.Location
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DirectionsBike
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.awaitCancellation
 import week11.st765512.finalproject.util.DirectionsHelper
+import week11.st765512.finalproject.util.DirectionsHelper.TravelMode
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.MapsInitializer
 import com.google.android.gms.maps.model.CameraPosition
@@ -40,7 +59,9 @@ import com.google.maps.android.compose.rememberCameraPositionState
  * @param destination Destination coordinates (LatLng)
  * @param onLocationSelected Callback when user clicks on map to select location
  * @param routePoints Points for drawing route polyline
- * @param routeInfo Route information to display in info window
+ * @param drivingRouteInfo Route information for driving mode
+ * @param bicyclingRouteInfo Route information for bicycling mode
+ * @param walkingRouteInfo Route information for walking mode
  * @param modifier Modifier for the map
  */
 @Composable
@@ -49,7 +70,10 @@ fun GoogleMapView(
     destination: LatLng? = null,
     onLocationSelected: ((LatLng) -> Unit)? = null, // LatLng - will determine start/destination based on current state
     routePoints: List<LatLng> = emptyList(),
-    routeInfo: DirectionsHelper.RouteInfo? = null,
+    drivingRouteInfo: DirectionsHelper.RouteInfo? = null,
+    bicyclingRouteInfo: DirectionsHelper.RouteInfo? = null,
+    walkingRouteInfo: DirectionsHelper.RouteInfo? = null,
+    onGetCurrentLocation: (() -> Unit)? = null, // Callback to get current location
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -76,28 +100,45 @@ fun GoogleMapView(
         }
     }
 
-    // Update camera when locations change
+    // Track if we've already animated to avoid interfering with user dragging
+    var hasAnimatedToBothPoints by remember { mutableStateOf(false) }
+    
+    // Update camera only once when both points are first set, then let user drag freely
     androidx.compose.runtime.LaunchedEffect(startLocation, destination) {
         when {
-            startLocation != null && destination != null -> {
-                // Center between start and destination
+            startLocation != null && destination != null && !hasAnimatedToBothPoints -> {
+                // Center between start and destination and zoom in (only once)
                 val centerLat = (startLocation.latitude + destination.latitude) / 2
                 val centerLng = (startLocation.longitude + destination.longitude) / 2
                 val center = LatLng(centerLat, centerLng)
+                
+                // Calculate zoom level based on distance - moderate zoom
+                val distance = calculateDistance(startLocation, destination)
+                val zoomLevel = when {
+                    distance < 5.0 -> 14f  // Very close
+                    distance < 20.0 -> 12f  // Close
+                    distance < 50.0 -> 11f  // Medium distance
+                    distance < 100.0 -> 10f  // Medium-far distance
+                    else -> 9f  // Far
+                }
+                
                 cameraPositionState.animate(
                     CameraUpdateFactory.newCameraPosition(
-                        CameraPosition.fromLatLngZoom(center, 10f)
+                        CameraPosition.fromLatLngZoom(center, zoomLevel)
                     )
                 )
+                hasAnimatedToBothPoints = true
             }
-            startLocation != null -> {
+            startLocation != null && destination == null && !hasAnimatedToBothPoints -> {
+                // Only animate to start location if destination is not set yet
                 cameraPositionState.animate(
                     CameraUpdateFactory.newCameraPosition(
                         CameraPosition.fromLatLngZoom(startLocation, 12f)
                     )
                 )
             }
-            destination != null -> {
+            destination != null && startLocation == null && !hasAnimatedToBothPoints -> {
+                // Only animate to destination if start location is not set yet
                 cameraPositionState.animate(
                     CameraUpdateFactory.newCameraPosition(
                         CameraPosition.fromLatLngZoom(destination, 12f)
@@ -105,13 +146,23 @@ fun GoogleMapView(
                 )
             }
         }
+        
+        // Reset flag if both points are cleared
+        if (startLocation == null && destination == null) {
+            hasAnimatedToBothPoints = false
+        }
     }
 
     val uiSettings = remember {
         MapUiSettings(
             zoomControlsEnabled = true,
             compassEnabled = true,
-            mapToolbarEnabled = false
+            mapToolbarEnabled = false,
+            scrollGesturesEnabled = true,  // Enable map dragging/panning
+            zoomGesturesEnabled = true,    // Enable pinch to zoom
+            rotationGesturesEnabled = true, // Enable rotation gestures
+            tiltGesturesEnabled = true,    // Enable tilt gestures
+            scrollGesturesEnabledDuringRotateOrZoom = true // Allow scrolling during zoom/rotate
         )
     }
 
@@ -163,34 +214,79 @@ fun GoogleMapView(
             }
         }
         
-        // Show route info window if route is calculated
-        routeInfo?.let { info ->
+        // Show route info window if routes are calculated - display at top right to avoid blocking route
+        // Use absolute positioning instead of fillMaxSize Box to avoid blocking map interactions
+        if (startLocation != null && destination != null && (drivingRouteInfo != null || bicyclingRouteInfo != null || walkingRouteInfo != null)) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .wrapContentSize()
+            ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // Driving route
+                        drivingRouteInfo?.let { info ->
+                            RouteInfoRow(
+                                icon = Icons.Default.DirectionsCar,
+                                durationMinutes = info.durationMinutes,
+                                distanceKm = info.distanceKm
+                            )
+                        }
+                        
+                        // Bicycling route
+                        bicyclingRouteInfo?.let { info ->
+                            RouteInfoRow(
+                                icon = Icons.Default.DirectionsBike,
+                                durationMinutes = info.durationMinutes,
+                                distanceKm = info.distanceKm
+                            )
+                        }
+                        
+                        // Walking route
+                        walkingRouteInfo?.let { info ->
+                            RouteInfoRow(
+                                icon = Icons.Default.DirectionsWalk,
+                                durationMinutes = info.durationMinutes,
+                                distanceKm = info.distanceKm
+                            )
+                        }
+                    }
+                }
+        }
+        
+        // Show "Get Current Location" button at bottom left (avoid interfering with zoom controls)
+        onGetCurrentLocation?.let {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp),
-                contentAlignment = Alignment.TopCenter
+                contentAlignment = Alignment.BottomStart
             ) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                FloatingActionButton(
+                    onClick = it,
+                    shape = CircleShape,
+                    modifier = Modifier.size(48.dp),
+                    containerColor = MaterialTheme.colorScheme.primary
                 ) {
-                    Text(
-                        text = "${info.durationMinutes} min ${String.format("%.1f", info.distanceKm)} km",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.Black,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                    Icon(
+                        imageVector = Icons.Default.MyLocation,
+                        contentDescription = "Get Current Location",
+                        tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
         }
         
         // Show hint if no coordinates
-        if (startLocation == null && destination == null && routeInfo == null) {
+        if (startLocation == null && destination == null && drivingRouteInfo == null && bicyclingRouteInfo == null && walkingRouteInfo == null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -229,6 +325,49 @@ fun MapPlaceholder(
             text = "Enter starting point and destination to see map",
             style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
             color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/**
+ * Calculate distance between two LatLng points in kilometers
+ */
+private fun calculateDistance(point1: LatLng, point2: LatLng): Double {
+    val results = FloatArray(1)
+    android.location.Location.distanceBetween(
+        point1.latitude,
+        point1.longitude,
+        point2.latitude,
+        point2.longitude,
+        results
+    )
+    return results[0] / 1000.0 // Convert meters to kilometers
+}
+
+/**
+ * Route info row component showing icon and route details
+ */
+@Composable
+private fun RouteInfoRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    durationMinutes: Int,
+    distanceKm: Double
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = "${durationMinutes} min ${String.format("%.1f", distanceKm)} km",
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }

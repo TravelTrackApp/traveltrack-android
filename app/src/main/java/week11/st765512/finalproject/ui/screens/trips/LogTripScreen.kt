@@ -11,9 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.LocationOn
@@ -33,6 +38,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,12 +50,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.maps.model.LatLng
+import week11.st765512.finalproject.util.LocationHelper
+import week11.st765512.finalproject.util.ReverseGeocodingHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -65,7 +77,6 @@ import week11.st765512.finalproject.ui.viewmodel.TripViewModel
 import week11.st765512.finalproject.util.ApiKeyHelper
 import week11.st765512.finalproject.util.DirectionsHelper
 import week11.st765512.finalproject.util.GeocodingHelper
-import week11.st765512.finalproject.util.ReverseGeocodingHelper
 
 @Composable
 fun DrawerContent(
@@ -162,6 +173,7 @@ fun LogTripScreen(
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var uiState by remember { mutableStateOf(tripViewModel.uiState.value) }
     LaunchedEffect(Unit) {
         tripViewModel.uiState.collect { uiState = it }
@@ -177,40 +189,121 @@ fun LogTripScreen(
     var startLatLng by remember { mutableStateOf<LatLng?>(null) }
     var destinationLatLng by remember { mutableStateOf<LatLng?>(null) }
     var routePoints by remember { mutableStateOf<List<LatLng>>(emptyList()) }
-    var routeInfo by remember { mutableStateOf<DirectionsHelper.RouteInfo?>(null) }
+    var drivingRouteInfo by remember { mutableStateOf<DirectionsHelper.RouteInfo?>(null) }
+    var bicyclingRouteInfo by remember { mutableStateOf<DirectionsHelper.RouteInfo?>(null) }
+    var walkingRouteInfo by remember { mutableStateOf<DirectionsHelper.RouteInfo?>(null) }
     var calculatedDistance by remember { mutableStateOf(0.0) }
     var calculatedDurationMinutes by remember { mutableStateOf(0) }
     var isCalculatingRoute by remember { mutableStateOf(false) }
     
-    val context = LocalContext.current
     val mapsApiKey = remember { ApiKeyHelper.getMapsApiKey(context) }
     
-    // Calculate route between two points
-    fun calculateRoute(origin: LatLng, dest: LatLng, apiKey: String) {
+    // Permission launcher
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+        
+        if (fineLocationGranted || coarseLocationGranted) {
+            // Permission granted, get current location
+            scope.launch {
+                try {
+                    val location = LocationHelper.getCurrentLocation(context)
+                    if (location != null) {
+                        val latLng = LatLng(location.latitude, location.longitude)
+                        startLatLng = latLng
+                        val address = ReverseGeocodingHelper.getShortAddress(latLng, context)
+                        startLocation = address ?: "${latLng.latitude},${latLng.longitude}"
+                    } else {
+                        formError = "Unable to get current location. Please check location settings."
+                    }
+                } catch (e: Exception) {
+                    formError = "Error getting location: ${e.message}"
+                }
+            }
+        } else {
+            formError = "Location permission is required to get your current location."
+        }
+    }
+    
+    // Function to get current location (with permission check)
+    fun getCurrentLocationWithPermission() {
+        // Check permission status at runtime
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        
+        if (hasPermission) {
+            // Permission already granted, get location directly
+            scope.launch {
+                try {
+                    val location = LocationHelper.getCurrentLocation(context)
+                    if (location != null) {
+                        val latLng = LatLng(location.latitude, location.longitude)
+                        startLatLng = latLng
+                        val address = ReverseGeocodingHelper.getShortAddress(latLng, context)
+                        startLocation = address ?: "${latLng.latitude},${latLng.longitude}"
+                    } else {
+                        formError = "Unable to get current location. Please check location settings."
+                    }
+                } catch (e: Exception) {
+                    formError = "Error getting location: ${e.message}"
+                }
+            }
+        } else {
+            // Request permission
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+    
+    // Calculate routes for all three travel modes
+    fun calculateRoutes(origin: LatLng, dest: LatLng, apiKey: String) {
         isCalculatingRoute = true
         scope.launch {
-            when (val result = DirectionsHelper.getRoute(origin, dest, apiKey, context)) {
+            // Calculate driving route
+            when (val result = DirectionsHelper.getRoute(origin, dest, apiKey, context, DirectionsHelper.TravelMode.DRIVING)) {
                 is Result.Success -> {
-                    routeInfo = result.data
+                    drivingRouteInfo = result.data
                     calculatedDistance = result.data.distanceKm
                     calculatedDurationMinutes = result.data.durationMinutes
                     routePoints = result.data.polylinePoints
                 }
                 is Result.Error -> {
                     val errorMsg = result.exception.message ?: "Unknown error"
-                    // Provide user-friendly error message for API key issues
                     formError = if (errorMsg.contains("not authorized") || errorMsg.contains("API key")) {
                         "API key configuration issue. Please check Google Cloud Console settings."
                     } else {
                         "Failed to calculate route: $errorMsg"
                     }
-                    routePoints = emptyList()
-                    routeInfo = null
                 }
-                is Result.Loading -> {
-                    // Loading state
+                is Result.Loading -> {}
+            }
+            
+            // Calculate bicycling route
+            DirectionsHelper.getRoute(origin, dest, apiKey, context, DirectionsHelper.TravelMode.BICYCLING).let { result ->
+                if (result is Result.Success) {
+                    bicyclingRouteInfo = result.data
                 }
             }
+            
+            // Calculate walking route
+            DirectionsHelper.getRoute(origin, dest, apiKey, context, DirectionsHelper.TravelMode.WALKING).let { result ->
+                if (result is Result.Success) {
+                    walkingRouteInfo = result.data
+                }
+            }
+            
             isCalculatingRoute = false
         }
     }
@@ -235,9 +328,9 @@ fun LogTripScreen(
                 destination = address ?: "${latLng.latitude},${latLng.longitude}"
             }
             
-            // Calculate route if both points are set
+            // Calculate routes if both points are set
             if (startLatLng != null && destinationLatLng != null && mapsApiKey != null) {
-                calculateRoute(startLatLng!!, destinationLatLng!!, mapsApiKey)
+                calculateRoutes(startLatLng!!, destinationLatLng!!, mapsApiKey)
             }
         }
     }
@@ -249,9 +342,9 @@ fun LogTripScreen(
             val coordinates = GeocodingHelper.parseCoordinates(startLocation)
             coordinates?.let {
                 startLatLng = it
-                // Calculate route if destination is also set
+                // Calculate routes if destination is also set
                 if (destinationLatLng != null && mapsApiKey != null) {
-                    calculateRoute(it, destinationLatLng!!, mapsApiKey!!)
+                    calculateRoutes(it, destinationLatLng!!, mapsApiKey!!)
                 }
             }
         }
@@ -262,18 +355,18 @@ fun LogTripScreen(
             val coordinates = GeocodingHelper.parseCoordinates(destination)
             coordinates?.let {
                 destinationLatLng = it
-                // Calculate route if start is also set
+                // Calculate routes if start is also set
                 if (startLatLng != null && mapsApiKey != null) {
-                    calculateRoute(startLatLng!!, it, mapsApiKey!!)
+                    calculateRoutes(startLatLng!!, it, mapsApiKey!!)
                 }
             }
         }
     }
     
-    // Calculate route when both coordinates are available
+    // Calculate routes when both coordinates are available
     LaunchedEffect(startLatLng, destinationLatLng) {
         if (startLatLng != null && destinationLatLng != null && mapsApiKey != null && routePoints.isEmpty()) {
-            calculateRoute(startLatLng!!, destinationLatLng!!, mapsApiKey!!)
+            calculateRoutes(startLatLng!!, destinationLatLng!!, mapsApiKey!!)
         }
     }
 
@@ -330,9 +423,7 @@ fun LogTripScreen(
                 .padding(padding)
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
             Surface(
@@ -350,7 +441,13 @@ fun LogTripScreen(
                         handleMapLocationSelected(latLng)
                     },
                     routePoints = routePoints,
-                    routeInfo = routeInfo,
+                    drivingRouteInfo = drivingRouteInfo,
+                    bicyclingRouteInfo = bicyclingRouteInfo,
+                    walkingRouteInfo = walkingRouteInfo,
+                    onGetCurrentLocation = {
+                        // Get current location with permission check
+                        getCurrentLocationWithPermission()
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -469,12 +566,14 @@ fun LogTripScreen(
                 startLocation = ""
                 destination = ""
                 notes = ""
-                startLatLng = null
-                destinationLatLng = null
-                routePoints = emptyList()
-                routeInfo = null
-                calculatedDistance = 0.0
-                calculatedDurationMinutes = 0
+            startLatLng = null
+            destinationLatLng = null
+            routePoints = emptyList()
+            drivingRouteInfo = null
+            bicyclingRouteInfo = null
+            walkingRouteInfo = null
+            calculatedDistance = 0.0
+            calculatedDurationMinutes = 0
                 delay(2500)
                 tripViewModel.clearMessage()
             }
