@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.Card
@@ -29,6 +30,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
@@ -90,32 +92,41 @@ fun HomeScreen(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = true,
         drawerContent = {
-            DrawerContent(
-                onHome = { scope.launch { drawerState.close() } },
-                onLogTrip = {
-                    scope.launch { drawerState.close() }
-                    onNavigateToLogTrip()
-                },
-                onSavedTrips = {
-                    scope.launch { drawerState.close() }
-                    onNavigateToTripList()
-                },
-                onLogout = {
-                    scope.launch { drawerState.close() }
-                    tripViewModel.clearSelectedTrip()
-                    authViewModel.signOut()
-                }
-            )
+            ModalDrawerSheet {
+                DrawerContent(
+                    onHome = { scope.launch { drawerState.close() } },
+                    onLogTrip = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToLogTrip()
+                    },
+                    onSavedTrips = {
+                        scope.launch { drawerState.close() }
+                        onNavigateToTripList()
+                    },
+                    onLogout = {
+                        scope.launch { drawerState.close() }
+                        tripViewModel.clearSelectedTrip()
+                        authViewModel.signOut()
+                    }
+                )
+            }
         }
     ) {
         Scaffold(
             floatingActionButton = {
                 FloatingActionButton(
                     onClick = onNavigateToLogTrip,
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Log trip")
+                    Icon(
+                        imageVector = Icons.Filled.Add, 
+                        contentDescription = "Log trip",
+                        modifier = Modifier.size(26.dp)
+                    )
                 }
             },
             containerColor = MaterialTheme.colorScheme.background
@@ -129,8 +140,8 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 HeaderSection(
-                    userName = authUiState.user?.displayName
-                        ?: authUiState.user?.email?.substringBefore("@")
+                    userName = authUiState.user?.displayName?.takeIf { it.isNotBlank() }
+                        ?: authUiState.user?.email?.substringBefore("@")?.takeIf { it.isNotBlank() }
                         ?: "Traveler",
                     onMenuClick = { scope.launch { drawerState.open() } }
                 )
@@ -179,16 +190,36 @@ private fun HeaderSection(
     userName: String,
     onMenuClick: () -> Unit
 ) {
+    val displayName = userName.ifBlank { "Traveler" }
+    
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
+        // Menu button on left - aligns with drawer opening from left
+        Surface(
+            onClick = onMenuClick,
+            modifier = Modifier.size(48.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 2.dp,
+            tonalElevation = 1.dp
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Menu,
+                contentDescription = "Menu",
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(12.dp)
+            )
+        }
+        
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Hello, $userName",
+                text = "Hello, $displayName",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
             )
             Text(
                 text = "Here is your travel summary",
@@ -196,68 +227,79 @@ private fun HeaderSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-
-        IconButton(
-            onClick = onMenuClick,
-            modifier = Modifier
-                .size(48.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.surface,
-                    shape = CircleShape
-                )
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Menu,
-                contentDescription = "Menu",
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-        }
     }
 }
 
 @Composable
 private fun SummarySection(tripUiState: TripUiState) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Card(
-            shape = RoundedCornerShape(32.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text(
+            text = "Your Journey Stats",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
-                Text(
-                    text = "Trips Summary",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+            StatCard(
+                title = "Total Trips",
+                value = tripUiState.summary.totalTrips.toString(),
+                caption = "Logged journeys",
+                modifier = Modifier.weight(1f)
+            )
+            StatCard(
+                title = "Distance",
+                value = "${"%.1f".format(tripUiState.summary.totalDistanceKm)} km",
+                caption = "Total traveled",
+                modifier = Modifier.weight(1f)
+            )
+        }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    StatCard(
-                        title = "Total Trips",
-                        value = tripUiState.summary.totalTrips.toString(),
-                        caption = "Logged journeys",
-                        modifier = Modifier.weight(1f)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "AVG DURATION",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Medium
                     )
-                    StatCard(
-                        title = "Distance",
-                        value = "${"%.1f".format(tripUiState.summary.totalDistanceKm)} km",
-                        caption = "Total traveled",
-                        modifier = Modifier.weight(1f)
+                    Text(
+                        text = if (tripUiState.summary.averageDurationHours > 0) {
+                            "${"%.1f".format(tripUiState.summary.averageDurationHours)} hours"
+                        } else {
+                            "No data yet"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                InfoChip(
-                    label = "Average Duration",
-                    value = if (tripUiState.summary.averageDurationHours > 0) {
-                        "${"%.1f".format(tripUiState.summary.averageDurationHours)} hrs"
-                    } else {
-                        "—"
-                    }
-                )
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.AccessTime,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(10.dp)
+                    )
+                }
             }
         }
     }
@@ -271,7 +313,7 @@ private fun RecentTripsSection(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -281,27 +323,32 @@ private fun RecentTripsSection(
             Text(
                 text = "Recent Trips",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground
             )
-            Text(
-                text = "View Trips",
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-                    .clickable { onViewAll() }
-            )
+            Surface(
+                onClick = onViewAll,
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            ) {
+                Text(
+                    text = "View All",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                )
+            }
         }
 
         if (trips.isEmpty()) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
-                tonalElevation = 1.dp
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp),
+                    modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Image(
@@ -309,17 +356,19 @@ private fun RecentTripsSection(
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(120.dp)
-                            .clip(RoundedCornerShape(24.dp)),
+                            .height(100.dp)
+                            .clip(RoundedCornerShape(16.dp)),
                         contentScale = ContentScale.Crop,
-                        alpha = 0.4f
+                        alpha = 0.5f
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "No trips logged yet",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Tap the + button to log your first journey.",
                         style = MaterialTheme.typography.bodyMedium,
@@ -348,48 +397,93 @@ private fun DrawerContent(
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .width(260.dp)
+            .width(280.dp)
             .background(MaterialTheme.colorScheme.surface)
-            .padding(24.dp),
+            .padding(horizontal = 20.dp, vertical = 32.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = "TravelTrack",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Navigate through the app",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(24.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // App branding section
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "TravelTrack",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "Your journey companion",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
 
             NavigationDrawerItem(
-                label = { Text("Home") },
-                selected = false,
+                label = { 
+                    Text(
+                        "Home",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    ) 
+                },
+                selected = true,
                 onClick = onHome,
-                colors = NavigationDrawerItemDefaults.colors()
+                shape = RoundedCornerShape(14.dp),
+                colors = NavigationDrawerItemDefaults.colors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    unselectedContainerColor = Color.Transparent
+                )
             )
             NavigationDrawerItem(
-                label = { Text("Log Trip") },
+                label = { 
+                    Text(
+                        "Log Trip",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    ) 
+                },
                 selected = false,
                 onClick = onLogTrip,
-                colors = NavigationDrawerItemDefaults.colors()
+                shape = RoundedCornerShape(14.dp),
+                colors = NavigationDrawerItemDefaults.colors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    unselectedContainerColor = Color.Transparent
+                )
             )
             NavigationDrawerItem(
-                label = { Text("View Trips") },
+                label = { 
+                    Text(
+                        "View Trips",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    ) 
+                },
                 selected = false,
                 onClick = onSavedTrips,
-                colors = NavigationDrawerItemDefaults.colors()
+                shape = RoundedCornerShape(14.dp),
+                colors = NavigationDrawerItemDefaults.colors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                    unselectedContainerColor = Color.Transparent
+                )
             )
         }
 
+        // Logout section
         Surface(
+            onClick = onLogout,
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            tonalElevation = 1.dp
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
         ) {
             Row(
                 modifier = Modifier
@@ -402,20 +496,20 @@ private fun DrawerContent(
                     Text(
                         text = "Logout",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onErrorContainer
                     )
                     Text(
                         text = "See you soon!",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
                     )
                 }
-                IconButton(onClick = onLogout) {
-                    Icon(
-                        imageVector = Icons.Outlined.Logout,
-                        contentDescription = "Logout"
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Outlined.Logout,
+                    contentDescription = "Logout",
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
             }
         }
     }

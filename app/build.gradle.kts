@@ -98,4 +98,7 @@ dependencies {
     
     // OkHttp for API calls
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    
+    // Google Places SDK for autocomplete
+    implementation("com.google.android.libraries.places:places:3.3.0")
 }
