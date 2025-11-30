@@ -49,8 +49,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -77,6 +79,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import android.util.Log
 import week11.st765512.finalproject.data.model.Result
 import week11.st765512.finalproject.data.model.TripInput
 import week11.st765512.finalproject.ui.components.CustomButton
@@ -217,13 +220,19 @@ fun LogTripScreen(
     // Storage repository for uploading images
     val storageRepository = remember { StorageRepository() }
     
-    // Image picker launcher
+    // Image picker launcher - use GetContent which works with file managers
+    // This avoids Google Photos login requirement
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
             selectedImageUri = it
         }
+    }
+    
+    // Function to launch image picker - explicitly request image files
+    fun launchImagePicker() {
+        imagePickerLauncher.launch("image/*")
     }
     
     // Permission launcher
@@ -554,14 +563,14 @@ fun LogTripScreen(
                                     modifier = Modifier
                                         .size(80.dp)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .clickable { imagePickerLauncher.launch("image/*") },
+                                        .clickable { launchImagePicker() },
                                     contentScale = ContentScale.Crop
                                 )
                             }
                             
                             // Add photo button
                             Button(
-                                onClick = { imagePickerLauncher.launch("image/*") },
+                                onClick = { launchImagePicker() },
                                 enabled = !uiState.isSubmitting,
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -625,7 +634,7 @@ fun LogTripScreen(
                                     
                                     // Upload image if selected
                                     selectedImageUri?.let { uri ->
-                                        when (val uploadResult = storageRepository.uploadImage(uri)) {
+                                        when (val uploadResult = storageRepository.uploadImage(uri, context)) {
                                             is Result.Success -> {
                                                 photoUrls = listOf(uploadResult.data)
                                             }
@@ -681,20 +690,22 @@ fun LogTripScreen(
                                     }
                                     
                                     // Save trip with all data
-                                    tripViewModel.saveTrip(
-                                        TripInput(
-                                            title = title,
-                                            startLocation = startLocation,
-                                            destinationLocation = destination,
-                                            notes = notes,
-                                            distanceKm = distanceValue,
-                                            durationMinutes = durationMinutes,
-                                            routeInfo = routeInfoList,
-                                            photoUrls = photoUrls
-                                        )
+                                    val tripInput = TripInput(
+                                        title = title.trim(),
+                                        startLocation = startLocation.trim(),
+                                        destinationLocation = destination.trim(),
+                                        notes = notes.trim(),
+                                        distanceKm = distanceValue,
+                                        durationMinutes = durationMinutes,
+                                        routeInfo = routeInfoList,
+                                        tags = emptyList(), // Explicitly set tags
+                                        photoUrls = photoUrls
                                     )
+                                    
+                                    tripViewModel.saveTrip(tripInput)
                                 } catch (e: Exception) {
-                                    formError = "Error saving trip: ${e.message}"
+                                    Log.e("LogTripScreen", "Error saving trip", e)
+                                    formError = "Error saving trip: ${e.message ?: "Unknown error"}"
                                 }
                             }
                         },
