@@ -24,7 +24,7 @@ object GeocodingHelper {
         context: Context
     ): LatLng? = withContext(Dispatchers.IO) {
         if (address.isBlank()) return@withContext null
-        ~
+        
         // Note: Geocoding is not implemented - returns null
         // To implement, use Android Geocoder or Google Geocoding API
         null
