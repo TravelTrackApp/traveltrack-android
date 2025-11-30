@@ -1,11 +1,15 @@
 package week11.st765512.finalproject.data.model
 
+import com.google.firebase.firestore.IgnoreExtraProperties
+
+@IgnoreExtraProperties
 data class RouteInfo(
-    val travelMode: String, // "DRIVING", "BICYCLING", "WALKING"
-    val distanceKm: Double,
-    val durationMinutes: Int
+    val travelMode: String = "", // "DRIVING", "BICYCLING", "WALKING"
+    val distanceKm: Double = 0.0,
+    val durationMinutes: Int = 0
 )
 
+@IgnoreExtraProperties
 data class Trip(
     val id: String = "",
     val userId: String = "",

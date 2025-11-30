@@ -150,6 +150,36 @@ class TripViewModel(
         }
     }
 
+    fun updateTrip(tripId: String, updates: Map<String, Any>, onComplete: (() -> Unit)? = null) {
+        val userId = currentUserId ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSubmitting = true, errorMessage = null, successMessage = null) }
+
+            when (val result = repository.updateTrip(userId, tripId, updates)) {
+                is Result.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            successMessage = "Trip updated successfully!"
+                        )
+                    }
+                    onComplete?.invoke()
+                }
+
+                is Result.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            errorMessage = result.exception.message ?: "Failed to update trip."
+                        )
+                    }
+                }
+
+                Result.Loading -> Unit
+            }
+        }
+    }
+
     fun deleteTrip(tripId: String, onComplete: (() -> Unit)? = null) {
         val userId = currentUserId ?: return
         viewModelScope.launch {
