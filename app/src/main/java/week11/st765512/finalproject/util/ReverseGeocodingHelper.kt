@@ -40,7 +40,6 @@ object ReverseGeocodingHelper {
                 address.countryName?.let { addressParts.add(it) }
                 
                 val formattedAddress = addressParts.joinToString(", ")
-                Log.d(TAG, "Address found: $formattedAddress")
                 formattedAddress
             } else {
                 Log.w(TAG, "No address found for coordinates")
@@ -88,5 +87,3 @@ object ReverseGeocodingHelper {
         }
     }
 }
-
-

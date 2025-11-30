@@ -39,8 +39,6 @@ object LocationHelper {
                 Log.w(TAG, "Location permission not granted")
                 return null
             }
-
-            Log.d(TAG, "Requesting current location...")
             
             // Get current location with timeout
             val cancellationTokenSource = CancellationTokenSource()
@@ -49,9 +47,7 @@ object LocationHelper {
                 cancellationTokenSource.token
             ).await()
 
-            if (locationResult != null) {
-                Log.d(TAG, "Location obtained: ${locationResult.latitude}, ${locationResult.longitude}")
-            } else {
+            if (locationResult == null) {
                 Log.w(TAG, "Location result is null - location may not be available")
             }
 

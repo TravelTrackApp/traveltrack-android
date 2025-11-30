@@ -25,18 +25,8 @@ object GeocodingHelper {
     ): LatLng? = withContext(Dispatchers.IO) {
         if (address.isBlank()) return@withContext null
         
-        // TODO: Implement actual geocoding
-        // Option 1: Use Android Geocoder
-        // val geocoder = Geocoder(context)
-        // val results = geocoder.getFromLocationName(address, 1)
-        // results?.firstOrNull()?.let { 
-        //     LatLng(it.latitude, it.longitude) 
-        // }
-        
-        // Option 2: Use Google Geocoding API
-        // Make HTTP request to Google Geocoding API
-        
-        // For now, return null (map will show placeholder)
+        // Note: Geocoding is not implemented - returns null
+        // To implement, use Android Geocoder or Google Geocoding API
         null
     }
     
@@ -70,7 +60,3 @@ object GeocodingHelper {
         }
     }
 }
-
-
-
-

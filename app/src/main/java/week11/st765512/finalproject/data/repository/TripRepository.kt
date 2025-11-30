@@ -1,5 +1,6 @@
 package week11.st765512.finalproject.data.repository
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
@@ -43,9 +44,11 @@ class TripRepository(
                 userId = userId,
                 createdAt = trip.createdAt.takeIf { it > 0 } ?: System.currentTimeMillis()
             )
+            // Use set() to save the trip
             docRef.set(payload).await()
             Result.Success(docRef.id)
         } catch (e: Exception) {
+            Log.e("TripRepository", "Error creating trip: ${e.message}", e)
             Result.Error(e)
         }
     }

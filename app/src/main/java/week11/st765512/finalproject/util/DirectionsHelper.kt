@@ -51,7 +51,6 @@ object DirectionsHelper {
                     "&mode=$mode" +
                     "&key=$apiKey"
             
-            Log.d(TAG, "Requesting route from Directions API")
             val response = URL(url).readText()
             val json = JSONObject(response)
             
@@ -81,7 +80,6 @@ object DirectionsHelper {
             val encodedPoints = overviewPolyline.getString("points")
             val polylinePoints = decodePolyline(encodedPoints)
             
-            Log.d(TAG, "Route calculated: ${distance}km, ${duration}min by $mode")
             Result.Success(RouteInfo(
                 distanceKm = distance, 
                 durationMinutes = duration, 

@@ -82,7 +82,6 @@ fun GoogleMapView(
     LaunchedEffect(Unit) {
         try {
             MapsInitializer.initialize(context)
-            Log.d("GoogleMaps", "Maps SDK initialized successfully")
         } catch (e: Exception) {
             Log.e("GoogleMaps", "Failed to initialize Maps SDK: ${e.message}", e)
         }
