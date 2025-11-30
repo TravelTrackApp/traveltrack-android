@@ -2,6 +2,7 @@ package week11.st765512.finalproject.ui.screens.trips
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,8 +12,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -23,6 +26,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.LocationOn
@@ -267,8 +271,8 @@ fun LogTripScreen(
     var calculatedDurationMinutes by remember { mutableStateOf(0) }
     var isCalculatingRoute by remember { mutableStateOf(false) }
     
-    // Selected image URI
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    // Selected image URIs (support multiple images)
+    var selectedImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
     
     val mapsApiKey = remember { ApiKeyHelper.getMapsApiKey(context) }
     
@@ -281,13 +285,18 @@ fun LogTripScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            selectedImageUri = it
+            selectedImageUris = selectedImageUris + it
         }
     }
     
     // Function to launch image picker - explicitly request image files
     fun launchImagePicker() {
         imagePickerLauncher.launch("image/*")
+    }
+    
+    // Function to remove image
+    fun removeImage(uri: Uri) {
+        selectedImageUris = selectedImageUris.filter { it != uri }
     }
     
     // Permission launcher
@@ -634,34 +643,59 @@ fun LogTripScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
-                            text = "Photo (Optional)",
+                            text = "Photos (Optional)",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
                         )
                         
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Display selected image or placeholder
-                            if (selectedImageUri != null) {
-                                Surface(
-                                    modifier = Modifier.size(76.dp),
-                                    shape = RoundedCornerShape(14.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant,
-                                    onClick = { launchImagePicker() }
-                                ) {
-                                    Image(
-                                        painter = rememberAsyncImagePainter(
-                                            ImageRequest.Builder(context)
-                                                .data(selectedImageUri)
-                                                .build()
-                                        ),
-                                        contentDescription = "Selected photo",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
-                                    )
+                            // Display selected images
+                            selectedImageUris.forEach { uri ->
+                                Box(modifier = Modifier.size(76.dp)) {
+                                    Surface(
+                                        modifier = Modifier.size(76.dp),
+                                        shape = RoundedCornerShape(14.dp),
+                                        color = MaterialTheme.colorScheme.surfaceVariant
+                                    ) {
+                                        Image(
+                                            painter = rememberAsyncImagePainter(
+                                                ImageRequest.Builder(context)
+                                                    .data(uri)
+                                                    .build()
+                                            ),
+                                            contentDescription = "Selected photo",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                    // Delete button (minus icon) on top right corner
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .align(Alignment.TopEnd)
+                                            .padding(2.dp)
+                                            .clickable { removeImage(uri) }
+                                    ) {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Remove,
+                                                contentDescription = "Remove photo",
+                                                modifier = Modifier
+                                                    .size(16.dp)
+                                                    .padding(4.dp),
+                                                tint = MaterialTheme.colorScheme.onError
+                                            )
+                                        }
+                                    }
                                 }
                             }
                             
@@ -673,7 +707,7 @@ fun LogTripScreen(
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier
                                     .height(76.dp)
-                                    .fillMaxWidth(if (selectedImageUri != null) 0.5f else 1f)
+                                    .width(76.dp)
                             ) {
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -688,7 +722,7 @@ fun LogTripScreen(
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = if (selectedImageUri == null) "Add Photo" else "Change",
+                                        text = "Add",
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -729,19 +763,19 @@ fun LogTripScreen(
                             
                             formError = null
                             
-                            // Upload image and save trip
+                            // Upload images and save trip
                             scope.launch {
                                 try {
                                     var photoUrls = emptyList<String>()
                                     
-                                    // Upload image if selected
-                                    selectedImageUri?.let { uri ->
-                                        when (val uploadResult = storageRepository.uploadImage(uri, context)) {
+                                    // Upload all selected images
+                                    if (selectedImageUris.isNotEmpty()) {
+                                        when (val uploadResult = storageRepository.uploadImages(selectedImageUris, context)) {
                                             is Result.Success -> {
-                                                photoUrls = listOf(uploadResult.data)
+                                                photoUrls = uploadResult.data
                                             }
                                             is Result.Error -> {
-                                                formError = "Failed to upload image: ${uploadResult.exception.message}"
+                                                formError = "Failed to upload images: ${uploadResult.exception.message}"
                                                 return@launch
                                             }
                                             Result.Loading -> Unit
@@ -796,6 +830,8 @@ fun LogTripScreen(
                                         title = title.trim(),
                                         startLocation = startLocation.trim(),
                                         destinationLocation = destination.trim(),
+                                        startLatLng = startLatLng?.let { "${it.latitude},${it.longitude}" } ?: "",
+                                        destinationLatLng = destinationLatLng?.let { "${it.latitude},${it.longitude}" } ?: "",
                                         notes = notes.trim(),
                                         distanceKm = distanceValue,
                                         durationMinutes = durationMinutes,
@@ -834,7 +870,7 @@ fun LogTripScreen(
                 walkingRouteInfo = null
                 calculatedDistance = 0.0
                 calculatedDurationMinutes = 0
-                selectedImageUri = null
+                selectedImageUris = emptyList()
                 delay(2500)
                 tripViewModel.clearMessage()
             }

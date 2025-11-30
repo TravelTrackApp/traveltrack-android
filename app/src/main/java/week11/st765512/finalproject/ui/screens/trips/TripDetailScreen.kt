@@ -1,9 +1,11 @@
 package week11.st765512.finalproject.ui.screens.trips
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,6 +15,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -39,11 +46,14 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collect
+import com.google.android.gms.maps.model.LatLng
 import week11.st765512.finalproject.data.model.Trip
 import week11.st765512.finalproject.ui.components.CustomButton
 import week11.st765512.finalproject.ui.components.CustomTextField
+import week11.st765512.finalproject.ui.components.GoogleMapView
 import week11.st765512.finalproject.ui.components.InfoChip
 import week11.st765512.finalproject.ui.viewmodel.TripViewModel
+import week11.st765512.finalproject.util.GeocodingHelper
 import week11.st765512.finalproject.util.TimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -227,6 +237,21 @@ fun TripDetailScreen(
 
 @Composable
 fun ViewModeContent(trip: Trip) {
+    val context = LocalContext.current
+    
+    // Parse coordinates from stored strings
+    val startLatLng = remember(trip.startLatLng) {
+        if (trip.startLatLng.isNotBlank()) {
+            GeocodingHelper.parseCoordinates(trip.startLatLng)
+        } else null
+    }
+    
+    val destinationLatLng = remember(trip.destinationLatLng) {
+        if (trip.destinationLatLng.isNotBlank()) {
+            GeocodingHelper.parseCoordinates(trip.destinationLatLng)
+        } else null
+    }
+    
     // Route card
     Surface(
         modifier = Modifier
@@ -322,6 +347,95 @@ fun ViewModeContent(trip: Trip) {
 
     Spacer(modifier = Modifier.height(18.dp))
 
+    // Map Display (if coordinates are available)
+    if (startLatLng != null || destinationLatLng != null) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            GoogleMapView(
+                startLocation = startLatLng,
+                destination = destinationLatLng,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(18.dp))
+    }
+
+    // Photos Display
+    if (trip.photoUrls.isNotEmpty()) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = "Photos",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                if (trip.photoUrls.size == 1) {
+                    // Single photo - full width
+                    Image(
+                        painter = rememberAsyncImagePainter(
+                            ImageRequest.Builder(context)
+                                .data(trip.photoUrls[0])
+                                .build()
+                        ),
+                        contentDescription = "Trip photo",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // Multiple photos - grid layout
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        trip.photoUrls.take(3).forEach { photoUrl ->
+                            Image(
+                                painter = rememberAsyncImagePainter(
+                                    ImageRequest.Builder(context)
+                                        .data(photoUrl)
+                                        .build()
+                                ),
+                                contentDescription = "Trip photo",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+                    if (trip.photoUrls.size > 3) {
+                        Text(
+                            text = "+${trip.photoUrls.size - 3} more photos",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(18.dp))
+    }
+
     // Metadata card
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -358,6 +472,76 @@ fun ViewModeContent(trip: Trip) {
     }
 
     Spacer(modifier = Modifier.height(8.dp))
+    
+    // Photos Display
+    if (trip.photoUrls.isNotEmpty()) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = "Photos",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                val context = LocalContext.current
+                
+                if (trip.photoUrls.size == 1) {
+                    // Single photo - full width
+                    Image(
+                        painter = rememberAsyncImagePainter(
+                            ImageRequest.Builder(context)
+                                .data(trip.photoUrls[0])
+                                .build()
+                        ),
+                        contentDescription = "Trip photo",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // Multiple photos - grid layout
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        trip.photoUrls.take(3).forEach { photoUrl ->
+                            Image(
+                                painter = rememberAsyncImagePainter(
+                                    ImageRequest.Builder(context)
+                                        .data(photoUrl)
+                                        .build()
+                                ),
+                                contentDescription = "Trip photo",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+                    if (trip.photoUrls.size > 3) {
+                        Text(
+                            text = "+${trip.photoUrls.size - 3} more photos",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
