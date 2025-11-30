@@ -39,8 +39,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.delay
+import week11.st765512.finalproject.ui.components.CustomButton
+import week11.st765512.finalproject.ui.components.CustomTextField
 import week11.st765512.finalproject.ui.components.SuccessPill
 import week11.st765512.finalproject.ui.components.TripListCard
+import week11.st765512.finalproject.ui.viewmodel.TripUiState
 import week11.st765512.finalproject.ui.viewmodel.TripViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,14 +89,25 @@ fun TripListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                if (uiState.trips.isEmpty()) {
-                    Box(
+
+            FilterPanel(
+                uiState = uiState,
+                onSearchChange = tripViewModel::updateSearchQuery,
+                onTagChange = tripViewModel::updateFilterTag,
+                onLocationChange = tripViewModel::updateFilterLocation,
+                onDateChange = tripViewModel::updateFilterDate,
+                onClear = tripViewModel::clearFilters
+            )
+
+            if (uiState.trips.isEmpty()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.6f),
+                    shape = RoundedCornerShape(32.dp),
+                    tonalElevation = 1.dp
+                ) {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .fillMaxHeight(0.7f),
@@ -181,6 +195,51 @@ fun TripListScreen(
         if (uiState.successMessage != null) {
             delay(2500)
             tripViewModel.clearMessage()
+        }
+    }
+}
+
+@Composable
+fun FilterPanel(
+    uiState: TripUiState,
+    onSearchChange: (String) -> Unit,
+    onTagChange: (String) -> Unit,
+    onLocationChange: (String) -> Unit,
+    onDateChange: (Long?) -> Unit,
+    onClear: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        tonalElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+
+            CustomTextField(
+                value = uiState.searchQuery,
+                onValueChange = onSearchChange,
+                label = "Search Trip"
+            )
+
+            CustomTextField(
+                value = uiState.filterTag,
+                onValueChange = onTagChange,
+                label = "Tag"
+            )
+
+            CustomTextField(
+                value = uiState.filterLocation,
+                onValueChange = onLocationChange,
+                label = "Location"
+            )
+
+            CustomButton(
+                text = "Clear Filters",
+                onClick = onClear
+            )
         }
     }
 }

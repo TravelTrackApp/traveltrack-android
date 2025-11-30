@@ -14,16 +14,24 @@ import week11.st765512.finalproject.data.model.Trip
 import week11.st765512.finalproject.data.model.TripInput
 import week11.st765512.finalproject.data.model.TripSummary
 import week11.st765512.finalproject.data.repository.TripRepository
+import week11.st765512.finalproject.util.TimeFormatter
 
 data class TripUiState(
-    val trips: List<Trip> = emptyList(),
+    val fullTrips: List<Trip> = emptyList(), // Firestore data display
+    val trips: List<Trip> = emptyList(), // filtered results shown
     val selectedTrip: Trip? = null,
     val summary: TripSummary = TripSummary(),
     val isLoading: Boolean = false,
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
-    val successMessage: String? = null
-)
+    val successMessage: String? = null,
+
+    // Filter Search Query
+    val searchQuery: String = "",
+    val filterDate: Long? = null,
+    val filterTag: String = "",
+    val filterLocation: String = "",
+    )
 
 class TripViewModel(
     private val repository: TripRepository = TripRepository()
@@ -56,10 +64,12 @@ class TripViewModel(
                 when (result) {
                     is Result.Success -> {
                         val trips = result.data
+
+                        val filtered = applyFilters(trips)
+
                         _uiState.update {
                             it.copy(
-                                trips = trips,
-                                summary = buildSummary(trips),
+                                fullTrips = trips, // show unfiltered trips
                                 isLoading = false,
                                 errorMessage = null
                             )
@@ -206,8 +216,77 @@ class TripViewModel(
         }
     }
 
+    // Filter Search Query Functions
+    fun updateSearchQuery(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+    }
+
+    fun updateFilterDate(date: Long?) {
+        _uiState.update { it.copy(filterDate = date) }
+    }
+
+    fun updateFilterTag(tag: String) {
+        _uiState.update { it.copy(filterTag = tag) }
+    }
+
+    fun updateFilterLocation(location: String) {
+        _uiState.update { it.copy(filterLocation = location) }
+    }
+
+    fun clearFilters() {
+        _uiState.update {
+            it.copy(
+                searchQuery = "",
+                filterDate = null,
+                filterTag = "",
+                filterLocation = ""
+            )
+        }
+    }
+
+    private fun applyFilters(trips: List<Trip>): List<Trip> {
+        val state = _uiState.value
+
+        return trips.filter { trip ->
+            val matchesSearch = state.searchQuery.isBlank() ||
+                    trip.title.contains(state.searchQuery, ignoreCase = true)
+
+            val matchesDate = state.filterDate == null ||
+                    TimeFormatter.formatDate(trip.createdAt).contains(
+                        TimeFormatter.formatDate(state.filterDate!!),
+                        ignoreCase = true
+                    )
+
+            val matchesTag = state.filterTag.isBlank() ||
+                    trip.tags.any { it.contains(state.filterTag, ignoreCase = true) }
+
+            val matchesLocation = state.filterLocation.isBlank() ||
+                    trip.startLocation.contains(state.filterLocation, ignoreCase = true) ||
+                    trip.destinationLocation.contains(state.filterLocation, ignoreCase = true)
+
+            matchesSearch && matchesDate && matchesTag && matchesLocation
+        }
+    }
+
     fun clearMessage() {
         _uiState.update { it.copy(successMessage = null, errorMessage = null) }
+    }
+
+    // Update list when typing in filter search
+    init {
+        viewModelScope.launch {
+            uiState.collect { state ->
+                val currentTrips = state.fullTrips
+                val filtered = applyFilters(currentTrips)
+
+                _uiState.update {
+                    it.copy(
+                        trips = filtered,
+                        summary = buildSummary(filtered)
+                    )
+                }
+            }
+        }
     }
 
     private fun buildSummary(trips: List<Trip>): TripSummary {
