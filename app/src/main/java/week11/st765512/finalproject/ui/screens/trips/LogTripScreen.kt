@@ -830,6 +830,8 @@ fun LogTripScreen(
                                         title = title.trim(),
                                         startLocation = startLocation.trim(),
                                         destinationLocation = destination.trim(),
+                                        startLatLng = startLatLng?.let { "${it.latitude},${it.longitude}" } ?: "",
+                                        destinationLatLng = destinationLatLng?.let { "${it.latitude},${it.longitude}" } ?: "",
                                         notes = notes.trim(),
                                         distanceKm = distanceValue,
                                         durationMinutes = durationMinutes,

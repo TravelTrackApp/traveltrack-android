@@ -16,6 +16,8 @@ data class Trip(
     val title: String = "",
     val startLocation: String = "",
     val destinationLocation: String = "",
+    val startLatLng: String = "", // Format: "lat,lng" for map display
+    val destinationLatLng: String = "", // Format: "lat,lng" for map display
     val notes: String = "",
     val distanceKm: Double = 0.0, // Primary distance (driving)
     val durationMinutes: Int = 0, // Primary duration (driving)
@@ -35,6 +37,8 @@ data class TripInput(
     val title: String,
     val startLocation: String,
     val destinationLocation: String,
+    val startLatLng: String = "", // Format: "lat,lng"
+    val destinationLatLng: String = "", // Format: "lat,lng"
     val notes: String,
     val distanceKm: Double,
     val durationMinutes: Int,
