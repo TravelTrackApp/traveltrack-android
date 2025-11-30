@@ -69,6 +69,7 @@ fun TripDetailScreen(
     var notes by remember { mutableStateOf("") }
     var distance by remember { mutableStateOf("") }
     var durationHours by remember { mutableStateOf("") }
+    var tags by remember { mutableStateOf("") }
     LaunchedEffect(trip) {
         if (trip != null) {
             title = trip.title
@@ -77,6 +78,7 @@ fun TripDetailScreen(
             notes = trip.notes
             distance = trip.distanceKm.toString()
             durationHours = (trip.durationMinutes / 60f).toString()
+            tags = trip.tags.joinToString(", ")
         }
     }
 
@@ -150,6 +152,8 @@ fun TripDetailScreen(
                     onDistanceChange = { distance = it },
                     durationHours = durationHours,
                     onDurationChange = { durationHours = it },
+                    tags = tags,
+                    onTagsChange = { tags = it },
                     onApply = {
                         val updates = mapOf(
                             "title" to title,
@@ -268,6 +272,8 @@ fun EditModeContent(
     onDistanceChange: (String) -> Unit,
     durationHours: String,
     onDurationChange: (String) -> Unit,
+    tags: String,
+    onTagsChange: (String) -> Unit,
     onApply: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -283,6 +289,11 @@ fun EditModeContent(
             label = "Notes",
             singleLine = false,
             maxLines = 4
+        )
+        CustomTextField(
+            value = tags,
+            onValueChange = onTagsChange,
+            label = "Tags, (separated by comma)"
         )
 
         Spacer(modifier = Modifier.height(24.dp))
