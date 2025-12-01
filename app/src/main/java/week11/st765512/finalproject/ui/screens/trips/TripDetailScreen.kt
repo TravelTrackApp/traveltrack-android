@@ -1,6 +1,7 @@
 package week11.st765512.finalproject.ui.screens.trips
 
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -31,6 +32,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -57,14 +60,19 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import com.google.android.gms.maps.model.LatLng
 import week11.st765512.finalproject.data.model.Result
+import week11.st765512.finalproject.data.model.RouteInfo
 import week11.st765512.finalproject.data.model.Trip
 import week11.st765512.finalproject.data.repository.StorageRepository
+import week11.st765512.finalproject.ui.components.AutocompleteTextField
 import week11.st765512.finalproject.ui.components.CustomButton
 import week11.st765512.finalproject.ui.components.CustomTextField
 import week11.st765512.finalproject.ui.components.GoogleMapView
 import week11.st765512.finalproject.ui.components.InfoChip
 import week11.st765512.finalproject.ui.viewmodel.TripViewModel
+import week11.st765512.finalproject.util.ApiKeyHelper
+import week11.st765512.finalproject.util.DirectionsHelper
 import week11.st765512.finalproject.util.GeocodingHelper
+import week11.st765512.finalproject.util.PlacesAutocompleteHelper
 import week11.st765512.finalproject.util.TimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,6 +108,22 @@ fun TripDetailScreen(
     var durationHours by remember { mutableStateOf("") }
     var tags by remember { mutableStateOf("") }
     
+    // Map coordinates for editing
+    var editStartLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var editDestinationLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var editRoutePoints by remember { mutableStateOf<List<LatLng>>(emptyList()) }
+    var editDrivingRouteInfo by remember { mutableStateOf<DirectionsHelper.RouteInfo?>(null) }
+    var editBicyclingRouteInfo by remember { mutableStateOf<DirectionsHelper.RouteInfo?>(null) }
+    var editWalkingRouteInfo by remember { mutableStateOf<DirectionsHelper.RouteInfo?>(null) }
+    var isCalculatingRoute by remember { mutableStateOf(false) }
+    
+    val mapsApiKey = remember { ApiKeyHelper.getMapsApiKey(context) }
+    
+    // Initialize Places SDK for autocomplete
+    LaunchedEffect(Unit) {
+        PlacesAutocompleteHelper.initialize(context)
+    }
+    
     // Photo editing state
     var existingPhotoUrls by remember { mutableStateOf<List<String>>(emptyList()) }
     var newImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
@@ -114,6 +138,42 @@ fun TripDetailScreen(
         }
     }
     
+    // Function to calculate routes for all travel modes
+    fun calculateRoutes(origin: LatLng, dest: LatLng, apiKey: String) {
+        isCalculatingRoute = true
+        scope.launch {
+            // Calculate driving route
+            when (val result = DirectionsHelper.getRoute(origin, dest, apiKey, context, DirectionsHelper.TravelMode.DRIVING)) {
+                is Result.Success -> {
+                    editDrivingRouteInfo = result.data
+                    distance = "%.3f".format(result.data.distanceKm)
+                    durationHours = "%.8f".format(result.data.durationMinutes / 60f)
+                    editRoutePoints = result.data.polylinePoints
+                }
+                is Result.Error -> {
+                    Log.e("TripDetailScreen", "Failed to calculate route: ${result.exception.message}")
+                }
+                is Result.Loading -> {}
+            }
+            
+            // Calculate bicycling route
+            DirectionsHelper.getRoute(origin, dest, apiKey, context, DirectionsHelper.TravelMode.BICYCLING).let { result ->
+                if (result is Result.Success) {
+                    editBicyclingRouteInfo = result.data
+                }
+            }
+            
+            // Calculate walking route
+            DirectionsHelper.getRoute(origin, dest, apiKey, context, DirectionsHelper.TravelMode.WALKING).let { result ->
+                if (result is Result.Success) {
+                    editWalkingRouteInfo = result.data
+                }
+            }
+            
+            isCalculatingRoute = false
+        }
+    }
+    
     LaunchedEffect(trip) {
         if (trip != null) {
             title = trip.title
@@ -125,6 +185,21 @@ fun TripDetailScreen(
             tags = trip.tags.joinToString(", ")
             existingPhotoUrls = trip.photoUrls
             newImageUris = emptyList()
+            
+            // Initialize coordinates from trip data
+            editStartLatLng = if (trip.startLatLng.isNotBlank()) {
+                GeocodingHelper.parseCoordinates(trip.startLatLng)
+            } else null
+            
+            editDestinationLatLng = if (trip.destinationLatLng.isNotBlank()) {
+                GeocodingHelper.parseCoordinates(trip.destinationLatLng)
+            } else null
+            
+            // Reset route info
+            editRoutePoints = emptyList()
+            editDrivingRouteInfo = null
+            editBicyclingRouteInfo = null
+            editWalkingRouteInfo = null
         }
     }
 
@@ -231,8 +306,32 @@ fun TripDetailScreen(
                     onTitleChange = { title = it },
                     startLocation = startLocation,
                     onStartChange = { startLocation = it },
+                    onStartPlaceSelected = { placeDetails ->
+                        editStartLatLng = placeDetails.latLng
+                        startLocation = placeDetails.address.ifEmpty { placeDetails.name }
+                        
+                        // Calculate routes if destination is also set
+                        if (editDestinationLatLng != null && mapsApiKey != null) {
+                            calculateRoutes(placeDetails.latLng, editDestinationLatLng!!, mapsApiKey)
+                        }
+                    },
                     destinationLocation = destinationLocation,
                     onDestinationChange = { destinationLocation = it },
+                    onDestinationPlaceSelected = { placeDetails ->
+                        editDestinationLatLng = placeDetails.latLng
+                        destinationLocation = placeDetails.address.ifEmpty { placeDetails.name }
+                        
+                        // Calculate routes if start is also set
+                        if (editStartLatLng != null && mapsApiKey != null) {
+                            calculateRoutes(editStartLatLng!!, placeDetails.latLng, mapsApiKey)
+                        }
+                    },
+                    startLatLng = editStartLatLng,
+                    destinationLatLng = editDestinationLatLng,
+                    routePoints = editRoutePoints,
+                    drivingRouteInfo = editDrivingRouteInfo,
+                    bicyclingRouteInfo = editBicyclingRouteInfo,
+                    walkingRouteInfo = editWalkingRouteInfo,
                     notes = notes,
                     onNotesChange = { notes = it },
                     distance = distance,
@@ -246,7 +345,7 @@ fun TripDetailScreen(
                     newImageUris = newImageUris,
                     onRemoveNewImage = { uri -> newImageUris = newImageUris - uri },
                     onAddPhoto = { imagePickerLauncher.launch("image/*") },
-                    isUploadingPhotos = isUploadingPhotos,
+                    isUploadingPhotos = isUploadingPhotos || isCalculatingRoute,
                     onApply = {
                         scope.launch {
                             isUploadingPhotos = true
@@ -273,7 +372,37 @@ fun TripDetailScreen(
                                 .map { it.trim() }
                                 .filter { it.isNotBlank() }
                             
-                            val updates = mapOf(
+                            // Build route info list from calculated routes
+                            val routeInfoList = mutableListOf<RouteInfo>()
+                            editDrivingRouteInfo?.let { info ->
+                                routeInfoList.add(
+                                    RouteInfo(
+                                        travelMode = "DRIVING",
+                                        distanceKm = info.distanceKm,
+                                        durationMinutes = info.durationMinutes
+                                    )
+                                )
+                            }
+                            editBicyclingRouteInfo?.let { info ->
+                                routeInfoList.add(
+                                    RouteInfo(
+                                        travelMode = "BICYCLING",
+                                        distanceKm = info.distanceKm,
+                                        durationMinutes = info.durationMinutes
+                                    )
+                                )
+                            }
+                            editWalkingRouteInfo?.let { info ->
+                                routeInfoList.add(
+                                    RouteInfo(
+                                        travelMode = "WALKING",
+                                        distanceKm = info.distanceKm,
+                                        durationMinutes = info.durationMinutes
+                                    )
+                                )
+                            }
+                            
+                            val updates = mutableMapOf<String, Any>(
                                 "title" to title,
                                 "startLocation" to startLocation,
                                 "destinationLocation" to destinationLocation,
@@ -284,6 +413,19 @@ fun TripDetailScreen(
                                 "tags" to tagsList,
                                 "photoUrls" to finalPhotoUrls
                             )
+                            
+                            // Add updated coordinates if they've been set
+                            editStartLatLng?.let { latLng ->
+                                updates["startLatLng"] = "${latLng.latitude},${latLng.longitude}"
+                            }
+                            editDestinationLatLng?.let { latLng ->
+                                updates["destinationLatLng"] = "${latLng.latitude},${latLng.longitude}"
+                            }
+                            
+                            // Add route info if recalculated
+                            if (routeInfoList.isNotEmpty()) {
+                                updates["routeInfo"] = routeInfoList
+                            }
 
                             tripViewModel.updateTrip(tripId, updates) {
                                 isUploadingPhotos = false
@@ -295,6 +437,17 @@ fun TripDetailScreen(
                         // Reset photo state when canceling
                         existingPhotoUrls = trip.photoUrls
                         newImageUris = emptyList()
+                        // Reset coordinate state
+                        editStartLatLng = if (trip.startLatLng.isNotBlank()) {
+                            GeocodingHelper.parseCoordinates(trip.startLatLng)
+                        } else null
+                        editDestinationLatLng = if (trip.destinationLatLng.isNotBlank()) {
+                            GeocodingHelper.parseCoordinates(trip.destinationLatLng)
+                        } else null
+                        editRoutePoints = emptyList()
+                        editDrivingRouteInfo = null
+                        editBicyclingRouteInfo = null
+                        editWalkingRouteInfo = null
                         isEditing = false 
                     }
                 )
@@ -570,8 +723,16 @@ fun EditModeContent(
     onTitleChange: (String) -> Unit,
     startLocation: String,
     onStartChange: (String) -> Unit,
+    onStartPlaceSelected: (week11.st765512.finalproject.util.PlaceDetails) -> Unit,
     destinationLocation: String,
     onDestinationChange: (String) -> Unit,
+    onDestinationPlaceSelected: (week11.st765512.finalproject.util.PlaceDetails) -> Unit,
+    startLatLng: LatLng?,
+    destinationLatLng: LatLng?,
+    routePoints: List<LatLng>,
+    drivingRouteInfo: DirectionsHelper.RouteInfo?,
+    bicyclingRouteInfo: DirectionsHelper.RouteInfo?,
+    walkingRouteInfo: DirectionsHelper.RouteInfo?,
     notes: String,
     onNotesChange: (String) -> Unit,
     distance: String,
@@ -593,8 +754,48 @@ fun EditModeContent(
     
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         CustomTextField(value = title, onValueChange = onTitleChange, label = "Title")
-        CustomTextField(value = startLocation, onValueChange = onStartChange, label = "Start Location")
-        CustomTextField(value = destinationLocation, onValueChange = onDestinationChange, label = "Destination")
+        
+        // Start Location with autocomplete
+        AutocompleteTextField(
+            value = startLocation,
+            onValueChange = onStartChange,
+            onPlaceSelected = onStartPlaceSelected,
+            label = "Start Location",
+            placeholder = "Search location",
+            trailingIcon = Icons.Default.RadioButtonUnchecked
+        )
+        
+        // Destination with autocomplete
+        AutocompleteTextField(
+            value = destinationLocation,
+            onValueChange = onDestinationChange,
+            onPlaceSelected = onDestinationPlaceSelected,
+            label = "Destination",
+            placeholder = "Search location",
+            trailingIcon = Icons.Default.LocationOn
+        )
+        
+        // Map preview showing current/updated locations
+        if (startLatLng != null || destinationLatLng != null) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                GoogleMapView(
+                    startLocation = startLatLng,
+                    destination = destinationLatLng,
+                    routePoints = routePoints,
+                    drivingRouteInfo = drivingRouteInfo,
+                    bicyclingRouteInfo = bicyclingRouteInfo,
+                    walkingRouteInfo = walkingRouteInfo,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+        
         CustomTextField(value = distance, onValueChange = onDistanceChange, label = "Distance (km)")
         CustomTextField(value = durationHours, onValueChange = onDurationChange, label = "Duration (hours)")
         CustomTextField(
