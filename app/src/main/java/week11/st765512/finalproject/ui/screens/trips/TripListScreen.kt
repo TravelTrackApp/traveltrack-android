@@ -111,7 +111,8 @@ fun TripListScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .fillMaxHeight(0.7f),
-                        contentAlignment = Alignment.Center
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
@@ -153,29 +154,29 @@ fun TripListScreen(
                             }
                         }
                     }
-                } else {
-                    // Trip count header
-                    Text(
-                        text = "${uiState.trips.size} trip${if (uiState.trips.size != 1) "s" else ""} logged",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Medium
-                    )
-                    
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(uiState.trips, key = { it.id }) { trip ->
-                            TripListCard(
-                                trip = trip,
-                                onDelete = { tripViewModel.deleteTrip(trip.id) },
-                                onClick = { onTripSelected(trip.id) }
-                            )
-                        }
-                        // Bottom spacing for FAB
-                        item { Spacer(modifier = Modifier.height(16.dp)) }
+                }
+            } else {
+                // Trip count header
+                Text(
+                    text = "${uiState.trips.size} trip${if (uiState.trips.size != 1) "s" else ""} logged",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(uiState.trips, key = { it.id }) { trip ->
+                        TripListCard(
+                            trip = trip,
+                            onDelete = { tripViewModel.deleteTrip(trip.id) },
+                            onClick = { onTripSelected(trip.id) }
+                        )
                     }
+                    // Bottom spacing for FAB
+                    item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
 
