@@ -1,7 +1,13 @@
 package week11.st765512.finalproject.ui.screens.trips
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +28,7 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Delete
@@ -39,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,8 +54,11 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import com.google.android.gms.maps.model.LatLng
+import week11.st765512.finalproject.data.model.Result
 import week11.st765512.finalproject.data.model.Trip
+import week11.st765512.finalproject.data.repository.StorageRepository
 import week11.st765512.finalproject.ui.components.CustomButton
 import week11.st765512.finalproject.ui.components.CustomTextField
 import week11.st765512.finalproject.ui.components.GoogleMapView
@@ -77,6 +88,9 @@ fun TripDetailScreen(
     val trip = uiState.trips.find { it.id == tripId } ?: uiState.selectedTrip
 
     var isEditing by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val storageRepository = remember { StorageRepository() }
 
     var title by remember { mutableStateOf("") }
     var startLocation by remember { mutableStateOf("") }
@@ -85,6 +99,21 @@ fun TripDetailScreen(
     var distance by remember { mutableStateOf("") }
     var durationHours by remember { mutableStateOf("") }
     var tags by remember { mutableStateOf("") }
+    
+    // Photo editing state
+    var existingPhotoUrls by remember { mutableStateOf<List<String>>(emptyList()) }
+    var newImageUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    var isUploadingPhotos by remember { mutableStateOf(false) }
+    
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            newImageUris = newImageUris + it
+        }
+    }
+    
     LaunchedEffect(trip) {
         if (trip != null) {
             title = trip.title
@@ -94,6 +123,8 @@ fun TripDetailScreen(
             distance = trip.distanceKm.toString()
             durationHours = (trip.durationMinutes / 60f).toString()
             tags = trip.tags.joinToString(", ")
+            existingPhotoUrls = trip.photoUrls
+            newImageUris = emptyList()
         }
     }
 
@@ -210,22 +241,62 @@ fun TripDetailScreen(
                     onDurationChange = { durationHours = it },
                     tags = tags,
                     onTagsChange = { tags = it },
+                    existingPhotoUrls = existingPhotoUrls,
+                    onRemoveExistingPhoto = { url -> existingPhotoUrls = existingPhotoUrls - url },
+                    newImageUris = newImageUris,
+                    onRemoveNewImage = { uri -> newImageUris = newImageUris - uri },
+                    onAddPhoto = { imagePickerLauncher.launch("image/*") },
+                    isUploadingPhotos = isUploadingPhotos,
                     onApply = {
-                        val updates = mapOf(
-                            "title" to title,
-                            "startLocation" to startLocation,
-                            "destinationLocation" to destinationLocation,
-                            "notes" to notes,
-                            "distanceKm" to (distance.toDoubleOrNull() ?: 0.0),
-                            "durationMinutes" to ((durationHours.toDoubleOrNull()
-                                ?: 0.0) * 60).toInt()
-                        )
+                        scope.launch {
+                            isUploadingPhotos = true
+                            
+                            // Upload new images
+                            var uploadedUrls = emptyList<String>()
+                            if (newImageUris.isNotEmpty()) {
+                                when (val uploadResult = storageRepository.uploadImages(newImageUris, context)) {
+                                    is Result.Success -> {
+                                        uploadedUrls = uploadResult.data
+                                    }
+                                    is Result.Error -> {
+                                        isUploadingPhotos = false
+                                        return@launch
+                                    }
+                                    Result.Loading -> Unit
+                                }
+                            }
+                            
+                            // Combine existing (non-removed) photos with newly uploaded ones
+                            val finalPhotoUrls = existingPhotoUrls + uploadedUrls
+                            
+                            val tagsList = tags.split(",")
+                                .map { it.trim() }
+                                .filter { it.isNotBlank() }
+                            
+                            val updates = mapOf(
+                                "title" to title,
+                                "startLocation" to startLocation,
+                                "destinationLocation" to destinationLocation,
+                                "notes" to notes,
+                                "distanceKm" to (distance.toDoubleOrNull() ?: 0.0),
+                                "durationMinutes" to ((durationHours.toDoubleOrNull()
+                                    ?: 0.0) * 60).toInt(),
+                                "tags" to tagsList,
+                                "photoUrls" to finalPhotoUrls
+                            )
 
-                        tripViewModel.updateTrip(tripId, updates) {
-                            isEditing = false
+                            tripViewModel.updateTrip(tripId, updates) {
+                                isUploadingPhotos = false
+                                isEditing = false
+                            }
                         }
                     },
-                    onCancel = { isEditing = false }
+                    onCancel = { 
+                        // Reset photo state when canceling
+                        existingPhotoUrls = trip.photoUrls
+                        newImageUris = emptyList()
+                        isEditing = false 
+                    }
                 )
             }
 
@@ -476,76 +547,6 @@ fun ViewModeContent(trip: Trip) {
     }
 
     Spacer(modifier = Modifier.height(8.dp))
-    
-    // Photos Display
-    if (trip.photoUrls.isNotEmpty()) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surface
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Text(
-                    text = "Photos",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                
-                val context = LocalContext.current
-                
-                if (trip.photoUrls.size == 1) {
-                    // Single photo - full width
-                    Image(
-                        painter = rememberAsyncImagePainter(
-                            ImageRequest.Builder(context)
-                                .data(trip.photoUrls[0])
-                                .build()
-                        ),
-                        contentDescription = "Trip photo",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(16f / 9f)
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    // Multiple photos - grid layout
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        trip.photoUrls.take(3).forEach { photoUrl ->
-                            Image(
-                                painter = rememberAsyncImagePainter(
-                                    ImageRequest.Builder(context)
-                                        .data(photoUrl)
-                                        .build()
-                                ),
-                                contentDescription = "Trip photo",
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(12.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                    }
-                    if (trip.photoUrls.size > 3) {
-                        Text(
-                            text = "+${trip.photoUrls.size - 3} more photos",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -579,9 +580,17 @@ fun EditModeContent(
     onDurationChange: (String) -> Unit,
     tags: String,
     onTagsChange: (String) -> Unit,
+    existingPhotoUrls: List<String>,
+    onRemoveExistingPhoto: (String) -> Unit,
+    newImageUris: List<Uri>,
+    onRemoveNewImage: (Uri) -> Unit,
+    onAddPhoto: () -> Unit,
+    isUploadingPhotos: Boolean,
     onApply: () -> Unit,
     onCancel: () -> Unit
 ) {
+    val context = LocalContext.current
+    
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         CustomTextField(value = title, onValueChange = onTitleChange, label = "Title")
         CustomTextField(value = startLocation, onValueChange = onStartChange, label = "Start Location")
@@ -598,13 +607,154 @@ fun EditModeContent(
         CustomTextField(
             value = tags,
             onValueChange = onTagsChange,
-            label = "Tags, (separated by comma)"
+            label = "Tags (separated by comma)"
         )
+        
+        // Photos section
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "Photos",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium
+            )
+            
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Display existing photos
+                existingPhotoUrls.forEach { photoUrl ->
+                    Box(modifier = Modifier.size(76.dp)) {
+                        Surface(
+                            modifier = Modifier.size(76.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Image(
+                                painter = rememberAsyncImagePainter(
+                                    ImageRequest.Builder(context)
+                                        .data(photoUrl)
+                                        .build()
+                                ),
+                                contentDescription = "Existing photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        // Delete button
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp)
+                                .size(22.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.error,
+                                    shape = CircleShape
+                                )
+                                .clickable { onRemoveExistingPhoto(photoUrl) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove photo",
+                                tint = MaterialTheme.colorScheme.onError,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+                
+                // Display newly selected images
+                newImageUris.forEach { uri ->
+                    Box(modifier = Modifier.size(76.dp)) {
+                        Surface(
+                            modifier = Modifier.size(76.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Image(
+                                painter = rememberAsyncImagePainter(
+                                    ImageRequest.Builder(context)
+                                        .data(uri)
+                                        .build()
+                                ),
+                                contentDescription = "New photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        // Delete button
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp)
+                                .size(22.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.error,
+                                    shape = CircleShape
+                                )
+                                .clickable { onRemoveNewImage(uri) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove photo",
+                                tint = MaterialTheme.colorScheme.onError,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+                
+                // Add photo button
+                if (existingPhotoUrls.size + newImageUris.size < 5) {
+                    Surface(
+                        modifier = Modifier
+                            .size(76.dp)
+                            .clickable { onAddPhoto() },
+                        shape = RoundedCornerShape(14.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add photo",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+                }
+            }
+            
+            if (existingPhotoUrls.isEmpty() && newImageUris.isEmpty()) {
+                Text(
+                    text = "No photos added",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        CustomButton(text = "Apply Changes", onClick = onApply)
-        CustomButton(text = "Cancel", onClick = onCancel)
+        CustomButton(
+            text = if (isUploadingPhotos) "Uploading..." else "Apply Changes",
+            onClick = onApply,
+            enabled = !isUploadingPhotos
+        )
+        CustomButton(
+            text = "Cancel", 
+            onClick = onCancel,
+            enabled = !isUploadingPhotos
+        )
     }
 }
 

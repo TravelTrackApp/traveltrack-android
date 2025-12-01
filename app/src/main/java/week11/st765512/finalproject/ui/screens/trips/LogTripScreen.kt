@@ -258,6 +258,7 @@ fun LogTripScreen(
     var startLocation by rememberSaveable { mutableStateOf("") }
     var destination by rememberSaveable { mutableStateOf("") }
     var notes by rememberSaveable { mutableStateOf("") }
+    var tags by rememberSaveable { mutableStateOf("") }
     var formError by rememberSaveable { mutableStateOf<String?>(null) }
     
     // Map coordinates and route
@@ -638,6 +639,14 @@ fun LogTripScreen(
                         maxLines = 4
                     )
                     
+                    UnderlineTextField(
+                        value = tags,
+                        onValueChange = { tags = it },
+                        label = "Tags",
+                        placeholder = "e.g. vacation, business, family",
+                        enabled = !uiState.isSubmitting
+                    )
+                    
                     // Photo selection section
                     Column(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -825,6 +834,11 @@ fun LogTripScreen(
                                         0
                                     }
                                     
+                                    // Parse tags from comma-separated input
+                                    val tagsList = tags.split(",")
+                                        .map { it.trim() }
+                                        .filter { it.isNotBlank() }
+                                    
                                     // Save trip with all data
                                     val tripInput = TripInput(
                                         title = title.trim(),
@@ -836,7 +850,7 @@ fun LogTripScreen(
                                         distanceKm = distanceValue,
                                         durationMinutes = durationMinutes,
                                         routeInfo = routeInfoList,
-                                        tags = emptyList(), // Explicitly set tags
+                                        tags = tagsList,
                                         photoUrls = photoUrls
                                     )
                                     
