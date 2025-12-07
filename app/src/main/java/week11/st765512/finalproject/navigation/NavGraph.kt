@@ -1,3 +1,10 @@
+/**
+ * File: NavGraph.kt
+ * 
+ * Navigation graph for the entire application. Defines all screen destinations, handles
+ * authentication state changes, and manages navigation between Login, Register, Home,
+ * TripList, TripDetail, and LogTrip screens.
+ */
 package week11.st765512.finalproject.navigation
 
 import androidx.compose.runtime.Composable

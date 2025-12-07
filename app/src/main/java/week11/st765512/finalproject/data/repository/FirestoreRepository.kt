@@ -1,3 +1,8 @@
+/**
+ * File: FirestoreRepository.kt
+ * 
+ * Base Firestore Repository class providing generic CRUD operations for Firestore collections.
+ */
 package week11.st765512.finalproject.data.repository
 
 import com.google.firebase.auth.FirebaseAuth

@@ -1,3 +1,9 @@
+/**
+ * File: GeocodingHelper.kt
+ * 
+ * Helper class for geocoding (converting addresses to coordinates).
+ * Converts address strings to LatLng coordinates for map display.
+ */
 package week11.st765512.finalproject.util
 
 import android.content.Context

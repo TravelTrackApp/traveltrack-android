@@ -1,3 +1,9 @@
+/**
+ * File: AuthScreenContainer.kt
+ * 
+ * Container component for authentication screens with background image and consistent
+ * layout structure for login, register, and forgot password screens.
+ */
 package week11.st765512.finalproject.ui.components
 
 import androidx.compose.foundation.Image

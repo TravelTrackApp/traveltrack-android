@@ -1,3 +1,9 @@
+/**
+ * File: StorageRepository.kt
+ * 
+ * Repository for Firebase Storage operations. Handles image upload, batch upload, and deletion.
+ * Images are stored in Firebase Storage under trip_photos/{userId}_{timestamp}.jpg.
+ */
 package week11.st765512.finalproject.data.repository
 
 import android.content.Context

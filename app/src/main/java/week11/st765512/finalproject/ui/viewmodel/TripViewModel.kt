@@ -1,3 +1,9 @@
+/**
+ * File: TripViewModel.kt
+ * 
+ * ViewModel for managing trip-related UI state and business logic. Handles trip creation,
+ * updates, deletion, and real-time trip data observation from Firestore.
+ */
 package week11.st765512.finalproject.ui.viewmodel
 
 import android.os.Build

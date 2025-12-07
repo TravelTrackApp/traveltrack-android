@@ -1,3 +1,9 @@
+/**
+ * File: CustomTextField.kt
+ * 
+ * Custom text field component with location icon and rounded corner styling.
+ * Used for location input in various screens.
+ */
 package week11.st765512.finalproject.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth

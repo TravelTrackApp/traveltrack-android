@@ -1,3 +1,9 @@
+/**
+ * File: Trip.kt
+ * 
+ * Data models for trip-related entities including Trip, RouteInfo, TripSummary, and TripInput.
+ * These models represent trip information stored in Firestore and used throughout the app.
+ */
 package week11.st765512.finalproject.data.model
 
 import com.google.firebase.firestore.IgnoreExtraProperties

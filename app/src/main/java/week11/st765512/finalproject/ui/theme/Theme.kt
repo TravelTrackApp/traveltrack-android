@@ -1,3 +1,9 @@
+/**
+ * File: Theme.kt
+ * 
+ * Material 3 theme configuration for the app. Defines light and dark color schemes
+ * and applies theme settings based on system dark mode preference.
+ */
 package week11.st765512.finalproject.ui.theme
 
 import android.app.Activity

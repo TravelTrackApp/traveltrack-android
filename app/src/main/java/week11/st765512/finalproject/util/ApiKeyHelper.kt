@@ -1,3 +1,9 @@
+/**
+ * File: ApiKeyHelper.kt
+ * 
+ * Helper class for retrieving Google Maps API key from AndroidManifest.xml.
+ * Provides secure access to API keys stored in app metadata.
+ */
 package week11.st765512.finalproject.util
 
 import android.content.Context

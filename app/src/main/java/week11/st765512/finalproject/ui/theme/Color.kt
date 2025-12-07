@@ -1,3 +1,9 @@
+/**
+ * File: Color.kt
+ * 
+ * Color palette definitions for the app theme. Contains primary teal colors,
+ * background colors, and semantic colors for UI elements.
+ */
 package week11.st765512.finalproject.ui.theme
 
 import androidx.compose.ui.graphics.Color

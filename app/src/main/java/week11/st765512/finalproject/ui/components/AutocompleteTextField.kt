@@ -1,3 +1,9 @@
+/**
+ * File: AutocompleteTextField.kt
+ * 
+ * Text field component with Google Places autocomplete functionality. Provides location
+ * suggestions as user types and converts selected addresses to coordinates.
+ */
 package week11.st765512.finalproject.ui.components
 
 import androidx.compose.animation.AnimatedVisibility

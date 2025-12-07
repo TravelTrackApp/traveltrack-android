@@ -1,3 +1,9 @@
+/**
+ * File: Validation.kt
+ * 
+ * Helper class for input validation. Provides email and password validation
+ * functions with error messages for form validation in authentication screens.
+ */
 package week11.st765512.finalproject.util
 
 object Validation {

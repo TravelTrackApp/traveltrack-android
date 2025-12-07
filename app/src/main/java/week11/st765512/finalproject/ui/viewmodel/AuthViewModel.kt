@@ -1,3 +1,9 @@
+/**
+ * File: AuthViewModel.kt
+ * 
+ * ViewModel for managing authentication UI state and business logic. Handles user sign in,
+ * registration, password reset, and authentication state management.
+ */
 package week11.st765512.finalproject.ui.viewmodel
 
 import androidx.lifecycle.ViewModel

@@ -1,3 +1,9 @@
+/**
+ * File: DirectionsHelper.kt
+ * 
+ * Helper class for Google Directions API. Calculates route, distance, and duration
+ * between two points for different travel modes (driving, bicycling, walking).
+ */
 package week11.st765512.finalproject.util
 
 import android.content.Context

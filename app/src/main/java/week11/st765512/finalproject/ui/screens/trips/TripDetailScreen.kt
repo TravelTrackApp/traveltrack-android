@@ -1,3 +1,9 @@
+/**
+ * File: TripDetailScreen.kt
+ * 
+ * Screen displaying detailed information for a single trip. Shows trip details,
+ * route map, photos, and allows editing and deletion of trips.
+ */
 package week11.st765512.finalproject.ui.screens.trips
 
 import android.net.Uri

@@ -1,3 +1,9 @@
+/**
+ * File: Result.kt
+ * 
+ * Generic Result wrapper for handling async operations. Used throughout the app to represent
+ * Success, Error, and Loading states for API calls, database operations, and file uploads.
+ */
 package week11.st765512.finalproject.data.model
 
 /**

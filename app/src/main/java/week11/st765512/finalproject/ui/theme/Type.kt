@@ -1,3 +1,9 @@
+/**
+ * File: Type.kt
+ * 
+ * Typography configuration for the app. Defines text styles, font sizes, and
+ * font weights for consistent text appearance throughout the app.
+ */
 package week11.st765512.finalproject.ui.theme
 
 import androidx.compose.material3.Typography

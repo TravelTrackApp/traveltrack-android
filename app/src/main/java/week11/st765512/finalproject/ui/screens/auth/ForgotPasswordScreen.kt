@@ -1,3 +1,9 @@
+/**
+ * File: ForgotPasswordScreen.kt
+ * 
+ * Password reset screen. Allows users to request a password reset email
+ * and navigate back to login screen.
+ */
 package week11.st765512.finalproject.ui.screens.auth
 
 import androidx.compose.foundation.layout.Spacer

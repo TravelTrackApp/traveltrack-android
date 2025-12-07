@@ -1,3 +1,9 @@
+/**
+ * File: TripListScreen.kt
+ * 
+ * Screen displaying list of all user trips. Shows trip cards with filtering and
+ * search functionality, and allows navigation to individual trip details.
+ */
 package week11.st765512.finalproject.ui.screens.trips
 
 import android.os.Build

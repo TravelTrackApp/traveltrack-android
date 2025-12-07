@@ -1,3 +1,9 @@
+/**
+ * File: TimeFormatter.kt
+ * 
+ * Helper class for formatting timestamps to readable date strings.
+ * Converts Long timestamps to formatted date/time strings for display.
+ */
 package week11.st765512.finalproject.util
 
 import java.text.SimpleDateFormat

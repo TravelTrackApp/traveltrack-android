@@ -1,3 +1,9 @@
+/**
+ * File: UiState.kt
+ * 
+ * Generic UI State wrapper for consistent error and loading state handling.
+ * Provides a standard way to represent UI states across the app.
+ */
 package week11.st765512.finalproject.ui.common
 
 /**

@@ -1,3 +1,9 @@
+/**
+ * File: HomeScreen.kt
+ * 
+ * Main home/dashboard screen. Displays trip statistics, recent trips, and provides
+ * navigation to log new trips, view trip list, and access trip details.
+ */
 package week11.st765512.finalproject.ui.screens.home
 
 import androidx.compose.foundation.Image

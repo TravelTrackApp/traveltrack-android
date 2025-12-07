@@ -1,3 +1,9 @@
+/**
+ * File: CustomButton.kt
+ * 
+ * Custom button component with loading state and animation support. Used throughout
+ * the app for consistent button styling and behavior.
+ */
 package week11.st765512.finalproject.ui.components
 
 import androidx.compose.animation.animateColorAsState

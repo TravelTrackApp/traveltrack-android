@@ -1,3 +1,9 @@
+/**
+ * File: LogTripScreen.kt
+ * 
+ * Screen for creating new trips. Allows users to input trip details, select locations
+ * with autocomplete, view route on map, upload photos, and save trip to Firestore.
+ */
 package week11.st765512.finalproject.ui.screens.trips
 
 import androidx.compose.foundation.background

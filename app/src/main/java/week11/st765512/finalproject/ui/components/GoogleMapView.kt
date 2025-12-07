@@ -1,3 +1,9 @@
+/**
+ * File: GoogleMapView.kt
+ * 
+ * Reusable Google Maps component for displaying maps with markers and polylines.
+ * Supports showing start/destination locations, route visualization, and interactive map controls.
+ */
 package week11.st765512.finalproject.ui.components
 
 import android.location.Location

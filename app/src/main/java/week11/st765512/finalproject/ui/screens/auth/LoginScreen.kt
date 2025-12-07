@@ -1,3 +1,9 @@
+/**
+ * File: LoginScreen.kt
+ * 
+ * Login screen for user authentication. Allows users to sign in with email/password
+ * or navigate to registration and password reset screens.
+ */
 package week11.st765512.finalproject.ui.screens.auth
 
 import androidx.compose.foundation.layout.Arrangement

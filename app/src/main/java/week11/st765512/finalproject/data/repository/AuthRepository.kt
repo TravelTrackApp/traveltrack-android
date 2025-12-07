@@ -1,3 +1,9 @@
+/**
+ * File: AuthRepository.kt
+ * 
+ * Repository for Firebase Authentication operations. Handles user sign in, registration,
+ * password reset, Google sign in, and sign out functionality.
+ */
 package week11.st765512.finalproject.data.repository
 
 import com.google.firebase.auth.FirebaseAuth

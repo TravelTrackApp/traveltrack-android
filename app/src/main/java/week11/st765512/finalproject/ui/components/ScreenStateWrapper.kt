@@ -1,3 +1,9 @@
+/**
+ * File: ScreenStateWrapper.kt
+ * 
+ * Wrapper component for handling loading and error states in screens.
+ * Displays loading indicator or error messages based on UI state.
+ */
 package week11.st765512.finalproject.ui.components
 
 import androidx.compose.foundation.background

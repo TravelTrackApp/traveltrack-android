@@ -1,3 +1,9 @@
+/**
+ * File: LocationHelper.kt
+ * 
+ * Helper class for getting current device location using Fused Location Provider.
+ * Handles location permissions and retrieves GPS coordinates.
+ */
 package week11.st765512.finalproject.util
 
 import android.Manifest

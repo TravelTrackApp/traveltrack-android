@@ -1,3 +1,9 @@
+/**
+ * File: RegisterScreen.kt
+ * 
+ * User registration screen. Allows new users to create an account with email/password
+ * and navigate back to login screen.
+ */
 package week11.st765512.finalproject.ui.screens.auth
 
 import androidx.compose.foundation.layout.Arrangement

@@ -1,3 +1,9 @@
+/**
+ * File: TripComponents.kt
+ * 
+ * Reusable UI components for displaying trip information including trip cards,
+ * route info displays, and trip summary statistics.
+ */
 package week11.st765512.finalproject.ui.components
 
 import androidx.compose.foundation.background

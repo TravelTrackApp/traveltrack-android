@@ -1,3 +1,9 @@
+/**
+ * File: ErrorText.kt
+ * 
+ * Reusable error message text component for displaying error messages
+ * consistently across the app.
+ */
 package week11.st765512.finalproject.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth

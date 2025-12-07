@@ -1,3 +1,9 @@
+/**
+ * File: PlacesAutocompleteHelper.kt
+ * 
+ * Helper class for Google Places Autocomplete API. Provides location suggestions
+ * as user types and converts selected places to coordinates for map display.
+ */
 package week11.st765512.finalproject.util
 
 import android.content.Context

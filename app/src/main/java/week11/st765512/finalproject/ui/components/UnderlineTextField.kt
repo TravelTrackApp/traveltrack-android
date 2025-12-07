@@ -1,3 +1,9 @@
+/**
+ * File: UnderlineTextField.kt
+ * 
+ * Custom text field component with underline styling and location icon support.
+ * Used for location input fields in trip logging screens.
+ */
 package week11.st765512.finalproject.ui.components
 
 import androidx.compose.foundation.layout.Column

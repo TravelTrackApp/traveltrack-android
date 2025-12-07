@@ -1,3 +1,9 @@
+/**
+ * File: TripRepository.kt
+ * 
+ * Repository for trip data operations with Firestore. Handles CRUD operations and real-time
+ * listeners for user trips stored under users/{userId}/trips collection.
+ */
 package week11.st765512.finalproject.data.repository
 
 import android.util.Log

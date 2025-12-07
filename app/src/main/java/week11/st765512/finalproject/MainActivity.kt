@@ -1,3 +1,9 @@
+/**
+ * File: MainActivity.kt
+ * 
+ * Main entry point of the application. Initializes ViewModels, applies theme,
+ * and sets up navigation graph with authentication-based start destination.
+ */
 package week11.st765512.finalproject
 
 import android.os.Bundle

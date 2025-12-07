@@ -1,3 +1,9 @@
+/**
+ * File: ReverseGeocodingHelper.kt
+ * 
+ * Helper class for reverse geocoding (converting coordinates to addresses).
+ * Converts LatLng coordinates to readable address strings using Android Geocoder.
+ */
 package week11.st765512.finalproject.util
 
 import android.content.Context
