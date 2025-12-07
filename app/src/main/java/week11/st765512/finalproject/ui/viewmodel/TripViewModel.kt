@@ -1,5 +1,7 @@
 package week11.st765512.finalproject.ui.viewmodel
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -15,10 +17,16 @@ import week11.st765512.finalproject.data.model.TripInput
 import week11.st765512.finalproject.data.model.TripSummary
 import week11.st765512.finalproject.data.repository.TripRepository
 import week11.st765512.finalproject.util.TimeFormatter
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 data class TripUiState(
     val fullTrips: List<Trip> = emptyList(), // Firestore data display
     val trips: List<Trip> = emptyList(), // filtered results shown
+    val filteredTrips: List<Trip> = emptyList(),
+    val filterDateInput: String = "",
     val selectedTrip: Trip? = null,
     val summary: TripSummary = TripSummary(),
     val isLoading: Boolean = false,
@@ -33,6 +41,7 @@ data class TripUiState(
     val filterLocation: String = "",
     )
 
+@RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 class TripViewModel(
     private val repository: TripRepository = TripRepository()
 ) : ViewModel() {
@@ -43,6 +52,7 @@ class TripViewModel(
     private var currentUserId: String? = null
     private var tripsJob: Job? = null
 
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     fun onAuthStateChanged(userId: String?) {
         if (currentUserId == userId) return
         currentUserId = userId
@@ -55,6 +65,7 @@ class TripViewModel(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     private fun observeTrips() {
         val userId = currentUserId ?: return
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
@@ -216,6 +227,25 @@ class TripViewModel(
         }
     }
 
+    // YYYY-MM-DD conversion
+    fun updateFilterDateFromInput(input: String) {
+        // Always update the raw text
+        _uiState.update { it.copy(filterDateInput = input) }
+
+        // Try parsing ONLY when valid full date entered
+        if (input.length == 10) {  // yyyy-MM-dd = 10 chars
+            try {
+                val parsed = LocalDate.parse(input, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                val epoch = parsed.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+                _uiState.update { it.copy(filterDate = epoch) }
+
+            } catch (_: Exception) { /* ignore invalid */ }
+        } else {
+            _uiState.update { it.copy(filterDate = null) }
+        }
+    }
+
     // Filter Search Query Functions
     fun updateSearchQuery(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
@@ -244,6 +274,7 @@ class TripViewModel(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE) // required for isSameDay call
     private fun applyFilters(trips: List<Trip>): List<Trip> {
         val state = _uiState.value
 
@@ -251,11 +282,9 @@ class TripViewModel(
             val matchesSearch = state.searchQuery.isBlank() ||
                     trip.title.contains(state.searchQuery, ignoreCase = true)
 
-            val matchesDate = state.filterDate == null ||
-                    TimeFormatter.formatDate(trip.createdAt).contains(
-                        TimeFormatter.formatDate(state.filterDate!!),
-                        ignoreCase = true
-                    )
+            val matchesDate =
+                state.filterDate == null ||
+                        isSameDay(trip.createdAt, state.filterDate!!)
 
             val matchesTag = state.filterTag.isBlank() ||
                     trip.tags.any { it.contains(state.filterTag, ignoreCase = true) }
@@ -268,11 +297,22 @@ class TripViewModel(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE) // required for LocalDate.ofInstant
+    private fun isSameDay(tripTimestamp: Long, filterTimestamp: Long): Boolean {
+        val zone = ZoneId.systemDefault()
+
+        val tripDay = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(tripTimestamp), zone)
+        val filterDay = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(filterTimestamp), zone)
+
+        return tripDay == filterDay
+    }
+
     fun clearMessage() {
         _uiState.update { it.copy(successMessage = null, errorMessage = null) }
     }
 
     // Update list when typing in filter search
+
     init {
         viewModelScope.launch {
             uiState.collect { state ->
