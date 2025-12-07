@@ -1,8 +1,11 @@
 package week11.st765512.finalproject.ui.screens.trips
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -46,6 +49,7 @@ import week11.st765512.finalproject.ui.components.TripListCard
 import week11.st765512.finalproject.ui.viewmodel.TripUiState
 import week11.st765512.finalproject.ui.viewmodel.TripViewModel
 
+@RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripListScreen(
@@ -84,10 +88,11 @@ fun TripListScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Box(
+        Column(
             modifier = modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(padding),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
             FilterPanel(
@@ -95,8 +100,11 @@ fun TripListScreen(
                 onSearchChange = tripViewModel::updateSearchQuery,
                 onTagChange = tripViewModel::updateFilterTag,
                 onLocationChange = tripViewModel::updateFilterLocation,
-                onDateChange = tripViewModel::updateFilterDate,
-                onClear = tripViewModel::clearFilters
+                onDateInput = tripViewModel::updateFilterDateFromInput,
+                onClear = tripViewModel::clearFilters,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.35f)
             )
 
             if (uiState.trips.isEmpty()) {
@@ -185,7 +193,7 @@ fun TripListScreen(
                 SuccessPill(
                     message = message,
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
+                        .align(Alignment.BottomCenter as Alignment.Horizontal)
                         .padding(bottom = 24.dp)
                 )
             }
@@ -206,13 +214,14 @@ fun FilterPanel(
     onSearchChange: (String) -> Unit,
     onTagChange: (String) -> Unit,
     onLocationChange: (String) -> Unit,
-    onDateChange: (Long?) -> Unit,
-    onClear: () -> Unit
+    onDateInput: (String) -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
         tonalElevation = 2.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -225,17 +234,31 @@ fun FilterPanel(
                 label = "Search Trip"
             )
 
-            CustomTextField(
-                value = uiState.filterTag,
-                onValueChange = onTagChange,
-                label = "Tag"
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CustomTextField(
+                    value = uiState.filterDateInput,
+                    onValueChange = onDateInput,
+                    label = "Date (yyyy-MM-dd)",
+                    modifier = Modifier.weight(1f)
+                )
 
-            CustomTextField(
-                value = uiState.filterLocation,
-                onValueChange = onLocationChange,
-                label = "Location"
-            )
+                CustomTextField(
+                    value = uiState.filterTag,
+                    onValueChange = onTagChange,
+                    label = "Tag",
+                    modifier = Modifier.weight(1f)
+                )
+
+                CustomTextField(
+                    value = uiState.filterLocation,
+                    onValueChange = onLocationChange,
+                    label = "Location",
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
             CustomButton(
                 text = "Clear Filters",
