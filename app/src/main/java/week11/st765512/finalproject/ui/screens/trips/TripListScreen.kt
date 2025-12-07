@@ -74,7 +74,7 @@ fun TripListScreen(
             CenterAlignedTopAppBar(
                 title = { 
                     Text(
-                        text = "Saved Trips",
+                        text = "View Trips",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold
                     ) 
