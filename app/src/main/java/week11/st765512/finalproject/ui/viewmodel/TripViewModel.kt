@@ -34,7 +34,8 @@ data class TripUiState(
     val filteredTrips: List<Trip> = emptyList(),
     val filterDateInput: String = "",
     val selectedTrip: Trip? = null,
-    val summary: TripSummary = TripSummary(),
+    val summary: TripSummary = TripSummary(), // Summary for filtered trips (TripListScreen)
+    val fullSummary: TripSummary = TripSummary(), // Summary for all trips (HomeScreen)
     val isLoading: Boolean = false,
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
@@ -82,11 +83,10 @@ class TripViewModel(
                     is Result.Success -> {
                         val trips = result.data
 
-                        val filtered = applyFilters(trips)
-
                         _uiState.update {
                             it.copy(
                                 fullTrips = trips, // show unfiltered trips
+                                fullSummary = buildSummary(trips), // summary for all trips (HomeScreen)
                                 isLoading = false,
                                 errorMessage = null
                             )

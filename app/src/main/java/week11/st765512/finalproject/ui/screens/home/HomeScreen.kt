@@ -155,7 +155,7 @@ fun HomeScreen(
                 SummarySection(tripUiState = tripUiState)
 
                 RecentTripsSection(
-                    trips = tripUiState.trips.take(3),
+                    trips = tripUiState.fullTrips.take(3),
                     onViewAll = onNavigateToTripList,
                     onTripClick = onNavigateToTripDetail
                 )
@@ -238,6 +238,9 @@ private fun HeaderSection(
 
 @Composable
 private fun SummarySection(tripUiState: TripUiState) {
+    // Use fullSummary for HomeScreen to show stats for ALL trips (unfiltered)
+    val summary = tripUiState.fullSummary
+    
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text(
             text = "Your Journey Stats",
@@ -252,13 +255,13 @@ private fun SummarySection(tripUiState: TripUiState) {
         ) {
             StatCard(
                 title = "Total Trips",
-                value = tripUiState.summary.totalTrips.toString(),
+                value = summary.totalTrips.toString(),
                 caption = "Logged journeys",
                 modifier = Modifier.weight(1f)
             )
             StatCard(
                 title = "Distance",
-                value = "${"%.1f".format(tripUiState.summary.totalDistanceKm)} km",
+                value = "${"%.1f".format(summary.totalDistanceKm)} km",
                 caption = "Total traveled",
                 modifier = Modifier.weight(1f)
             )
@@ -284,8 +287,8 @@ private fun SummarySection(tripUiState: TripUiState) {
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = if (tripUiState.summary.averageDurationHours > 0) {
-                            "${"%.1f".format(tripUiState.summary.averageDurationHours)} hours"
+                        text = if (summary.averageDurationHours > 0) {
+                            "${"%.1f".format(summary.averageDurationHours)} hours"
                         } else {
                             "No data yet"
                         },
